@@ -1,6 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+/* eslint-disable react-hooks/rules-of-hooks, react-hooks/refs, react-hooks/exhaustive-deps -- Demo callback name and ref guard live in a compact legacy-compatible component. */
+
+import { useEffect, useMemo, useRef, useState } from "react";
+import { INTERVIEW_STATUSES, claimSubmission, filterCandidates, formatCountdown, getAnswerProgress } from "./demoLogic.mjs";
 
 type Role = "login" | "hr" | "lead" | "candidate";
 type View = "dashboard" | "candidates" | "questions" | "builder" | "review" | "invite" | "verify" | "brief" | "exam" | "done";
@@ -25,7 +28,7 @@ const questions: Question[] = [
   { id: 12, title: "近即時資料管線", type: "技術問答", difficulty: "困難", skills: ["Data Engineering", "System Design"], minutes: 35, description: "設計每 5 分鐘更新的營運指標管線。", detail: "涵蓋來源、轉換、儲存、品質檢查與告警。", example: "可用文字或簡圖描述。", rubric: "架構完整 35%、可靠性 30%、觀測性 20%、取捨 15%" },
 ];
 
-const statuses: Status[] = ["草稿", "待寄送", "等待面試者開始", "作答中", "已提交", "AI 分析中", "等待人工審核", "已完成", "已過期"];
+const statuses = INTERVIEW_STATUSES as Status[];
 const demoInterview = { candidate: "陳怡安", email: "yian.chen@example.com", job: "Junior Data Analyst", lead: "王柏翰", due: "2026/08/02 23:59", code: "482916", url: "talentscope.demo/i/DA-260801", status: "等待人工審核" as Status };
 const seedCandidates = [
   demoInterview,
@@ -49,11 +52,13 @@ export default function DemoApp() {
   const [modal, setModal] = useState<"" | "candidate" | "submit" | "question" | "result">("");
   const [result, setResult] = useState("待討論");
   const showToast = (text: string) => { setToast(text); window.setTimeout(() => setToast(""), 2400); };
-  const enter = (r: Role) => { setRole(r); setView(r === "candidate" ? "verify" : "dashboard"); };
+  const enter = (r: Role) => { if (r === "candidate") setStatus("等待面試者開始"); setRole(r); setView(r === "candidate" ? "verify" : "dashboard"); };
   const navigate = (v: View) => { setView(v); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
   if (role === "login") return <Login onEnter={enter} />;
-  if (role === "candidate") return <CandidateFlow view={view} navigate={navigate} modal={modal} setModal={setModal} setStatus={setStatus} showToast={showToast} />;
+  if (role === "candidate") return <CandidateFlow view={view} navigate={navigate} modal={modal} setModal={setModal} status={status} setStatus={setStatus} showToast={showToast} />;
+
+  const visibleCandidates = candidates.map(candidate => candidate.email === demoInterview.email ? { ...candidate, status } : candidate);
 
   const nav = role === "hr"
     ? [{ id: "dashboard", label: "總覽", icon: "⌂" }, { id: "candidates", label: "候選人", icon: "◎" }]
@@ -71,18 +76,18 @@ export default function DemoApp() {
     </aside>
     <main className="main">
       <header className="topbar"><div className="mobile-brand"><Brand /></div><div className="crumb">Talentscope <span>/</span> {nav.find(n => n.id === view)?.label || "詳情"}</div><div className="top-actions"><button className="icon-btn">⌕</button><button className="icon-btn notification">♢</button></div></header>
-      {role === "hr" && view === "dashboard" && <HrDashboard candidates={candidates} setModal={setModal} navigate={navigate} result={result} />}
-      {role === "hr" && view === "candidates" && <CandidateList candidates={candidates} setModal={setModal} navigate={navigate} />}
-      {role === "hr" && view === "review" && <HrSummary result={result} setModal={setModal} />}
-      {role === "lead" && view === "dashboard" && <LeadDashboard navigate={navigate} />}
+      {role === "hr" && view === "dashboard" && <HrDashboard candidates={visibleCandidates} setModal={setModal} navigate={navigate} result={result} />}
+      {role === "hr" && view === "candidates" && <CandidateList candidates={visibleCandidates} setModal={setModal} navigate={navigate} />}
+      {role === "hr" && view === "review" && <HrSummary result={result} status={status} setModal={setModal} />}
+      {role === "lead" && view === "dashboard" && <LeadDashboard navigate={navigate} status={status} />}
       {role === "lead" && view === "questions" && <QuestionBank selected={selected} setSelected={setSelected} setModal={setModal} navigate={navigate} showToast={showToast} />}
       {role === "lead" && view === "builder" && <Builder selected={selected} setSelected={setSelected} navigate={navigate} showToast={showToast} />}
       {role === "lead" && view === "invite" && <Invite navigate={navigate} showToast={showToast} />}
-      {role === "lead" && view === "review" && <TechReview navigate={navigate} showToast={showToast} />}
-      {role === "lead" && view === "candidates" && <TechReview navigate={navigate} showToast={showToast} />}
+      {role === "lead" && view === "review" && <TechReview navigate={navigate} showToast={showToast} status={status} />}
+      {role === "lead" && view === "candidates" && <TechReview navigate={navigate} showToast={showToast} status={status} />}
       {toast && <Toast text={toast} />}
     </main>
-    {modal === "candidate" && <NewCandidate onClose={() => setModal("")} onSave={(c) => { setCandidates([c, ...candidates]); setModal(""); showToast("候選人與面試邀請已建立"); }} />}
+    {modal === "candidate" && <NewCandidate candidates={candidates} onClose={() => setModal("")} onSave={(c) => { setCandidates([c, ...candidates]); setModal(""); showToast("候選人與面試邀請已建立"); }} />}
     {modal === "result" && <ResultModal result={result} onClose={() => setModal("")} onSave={(v) => { setResult(v); setStatus("已完成"); setModal(""); showToast("招募結果已更新"); }} />}
     {modal === "question" && <QuestionEditor onClose={() => setModal("")} showToast={showToast} />}
   </div>;
@@ -137,19 +142,22 @@ function CandidateTable({ rows, onOpen }: { rows: typeof seedCandidates; onOpen:
 
 function CandidateList({ candidates, setModal, navigate }: { candidates: typeof seedCandidates; setModal: (m: "candidate") => void; navigate: (v: View) => void }) {
   const [query, setQuery] = useState("");
-  const filtered = candidates.filter(c => `${c.candidate}${c.job}${c.lead}`.toLowerCase().includes(query.toLowerCase()));
+  const [statusFilter, setStatusFilter] = useState("");
+  const [jobFilter, setJobFilter] = useState("");
+  const jobs = useMemo(() => [...new Set(candidates.map(candidate => candidate.job))].sort(), [candidates]);
+  const filtered = useMemo(() => filterCandidates(candidates, { query, status: statusFilter, job: jobFilter }), [candidates, query, statusFilter, jobFilter]);
   return <div className="page"><PageTitle title="候選人" text="管理候選人資料、面試邀請與進度。" action={<Button onClick={() => setModal("candidate")}>＋ 新增候選人</Button>} />
-    <section className="panel"><div className="toolbar"><label className="search"><Icon name="⌕" /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="搜尋姓名、職缺或技術主管" /></label><select><option>所有狀態</option>{statuses.map(s => <option key={s}>{s}</option>)}</select><select><option>所有職缺</option><option>Junior Data Analyst</option><option>Backend Engineer</option></select></div>
-      {filtered.length ? <CandidateTable rows={filtered} onOpen={(c) => c.candidate === "陳怡安" ? navigate("review") : undefined} /> : <div className="empty"><Icon name="⌕" /><h3>找不到符合的候選人</h3><p>試著調整搜尋文字或篩選條件。</p></div>}
+    <section className="panel"><div className="toolbar"><label className="search"><Icon name="⌕" /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="搜尋姓名、Email、職缺或技術主管" /></label><select aria-label="依狀態篩選" value={statusFilter} onChange={e => setStatusFilter(e.target.value)}><option value="">所有狀態</option>{statuses.map(s => <option key={s}>{s}</option>)}</select><select aria-label="依職缺篩選" value={jobFilter} onChange={e => setJobFilter(e.target.value)}><option value="">所有職缺</option>{jobs.map(job => <option key={job}>{job}</option>)}</select></div>
+      {filtered.length ? <CandidateTable rows={filtered} onOpen={(c) => c.candidate === "陳怡安" ? navigate("review") : navigate("candidates")} /> : <div className="empty"><Icon name="⌕" /><h3>找不到符合的候選人</h3><p>目前沒有同時符合關鍵字、狀態與職缺的資料。</p><Button kind="secondary" onClick={() => { setQuery(""); setStatusFilter(""); setJobFilter(""); }}>清除篩選</Button></div>}
     </section></div>;
 }
 
-function LeadDashboard({ navigate }: { navigate: (v: View) => void }) {
+function LeadDashboard({ navigate, status }: { navigate: (v: View) => void; status: Status }) {
   return <div className="page"><PageTitle eyebrow="早安，柏翰" title="今天有 3 件事等你處理" text="聚焦出題與審核，讓面試流程順利往前。" />
     <div className="lead-stats">{[["待建立的面試", "2", "＋", "builder"], ["等待候選人作答", "4", "◷", "invite"], ["等待人工審核", "3", "✓", "review"], ["最近完成", "8", "◆", "review"]].map((s, i) => <button key={s[0]} onClick={() => navigate(s[3] as View)} className="lead-stat"><span className={`stat-icon c${i}`}>{s[2]}</span><div><small>{s[0]}</small><strong>{s[1]}</strong></div><span>→</span></button>)}</div>
     <div className="two-col lead-layout"><section className="panel wide"><div className="panel-head"><div><h2>需要你處理</h2><p>依優先順序排列</p></div></div><div className="assignment-list">
       <div className="assignment"><div className="avatar lg">林</div><div className="assignment-main"><div><h3>林冠宇 <Badge status="草稿" /></h3><p>Backend Engineer · HR 林佳穎指派</p></div><div className="assignment-meta"><span>期限 08/05</span><span>尚未選題</span></div></div><Button onClick={() => navigate("builder")}>開始組卷</Button></div>
-      <div className="assignment"><div className="avatar lg purple">陳</div><div className="assignment-main"><div><h3>陳怡安 <Badge status="等待人工審核" /></h3><p>Junior Data Analyst · 已完成 AI 初評</p></div><div className="assignment-meta"><span>提交於昨天 16:42</span><span>3 題 · 82 分鐘</span></div></div><Button kind="secondary" onClick={() => navigate("review")}>進行審核</Button></div>
+      <div className="assignment"><div className="avatar lg purple">陳</div><div className="assignment-main"><div><h3>陳怡安 <Badge status={status} /></h3><p>Junior Data Analyst · Demo 面試</p></div><div className="assignment-meta"><span>提交於昨天 16:42</span><span>3 題 · 82 分鐘</span></div></div><Button kind="secondary" onClick={() => navigate("review")}>進行審核</Button></div>
     </div></section><section className="panel"><div className="panel-head"><div><h2>本週面試概況</h2><p>7/27 — 8/2</p></div></div><div className="mini-chart">{[42,65,35,78,52,88,60].map((h,i)=><div key={i}><span style={{height:`${h}%`}}/><small>{["一","二","三","四","五","六","日"][i]}</small></div>)}</div><div className="chart-legend"><span><i /> 已完成 8</span><span><i /> 待處理 5</span></div></section></div>
   </div>;
 }
@@ -196,9 +204,9 @@ const evals = [
   ["表達與推理", 4, "註解精簡，能說明選擇此解法的原因。"],
 ];
 
-function TechReview({ navigate, showToast }: { navigate: (v: View) => void; showToast: (s: string) => void }) {
+function TechReview({ navigate, showToast, status }: { navigate: (v: View) => void; showToast: (s: string) => void; status: Status }) {
   const [scores,setScores]=useState(evals.map(e=>e[1] as number)); const [tab,setTab]=useState(0); const [note,setNote]=useState("SQL 基礎扎實，能清楚說明解題步驟。建議後續面談確認邊界條件敏感度。");
-  return <div className="page review-page"><button className="back" onClick={()=>navigate("dashboard")}>← 返回工作台</button><PageTitle title="陳怡安的面試審核" text="Junior Data Analyst · 2026/07/28 提交" action={<Badge status="等待人工審核" />} />
+  return <div className="page review-page"><button className="back" onClick={()=>navigate("dashboard")}>← 返回工作台</button><PageTitle title="陳怡安的面試審核" text="Junior Data Analyst · 2026/07/28 提交" action={<Badge status={status} />} />
     <div className="ai-warning"><Icon name="i" /><strong>AI 評估僅供輔助，最終結果由面試官確認。</strong><span>請根據候選人完整作答與你的專業判斷調整分數。</span></div>
     <div className="review-layout"><div><section className="panel candidate-info"><div className="person"><span>陳</span><div><strong>陳怡安</strong><small>yian.chen@example.com</small></div></div><dl><div><dt>作答時間</dt><dd>82 分 14 秒</dd></div><div><dt>完成題數</dt><dd>3 / 3</dd></div><div><dt>AI 提示</dt><dd>3 次</dd></div><div><dt>提交時間</dt><dd>07/28 16:42</dd></div></dl></section>
       <section className="panel answer-panel"><div className="question-tabs">{["Q1 連續活躍用戶","Q2 電商月留存率","Q3 資料品質異常"].map((t,i)=><button key={t} className={tab===i?"active":""} onClick={()=>setTab(i)}>{t}<span>{i===2?"問答":"SQL"} · {[24,31,27][i]} 分</span></button>)}</div><div className="answer-content"><div className="answer-head"><div><span>第 {tab+1} 題</span><h2>{[questions[0].title,questions[1].title,questions[7].title][tab]}</h2></div><span className="time-chip">停留 {[24,31,27][tab]}:0{tab+2}</span></div><p>{[questions[0].description,questions[1].description,questions[7].description][tab]}</p>
@@ -209,11 +217,45 @@ function TechReview({ navigate, showToast }: { navigate: (v: View) => void; show
   </div>;
 }
 
-function HrSummary({ result, setModal }: { result: string; setModal: (m:"result")=>void }) {
+export function LegacyHrSummary({ result, setModal }: { result: string; setModal: (m:"result")=>void }) {
   return <div className="page review-page"><PageTitle title="陳怡安的面試摘要" text="Junior Data Analyst · 技術審核已完成" action={<Badge status="已完成" />} /><div className="summary-banner"><div><small>技術主管建議</small><h2>建議進入下一階段</h2><p>SQL 基礎扎實、表達清楚；建議後續面談確認邊界條件敏感度。</p></div><div className="score-ring"><strong>21</strong><span>/ 30</span></div></div><div className="three-summary">{[["作答完成度","3 / 3","全數作答"],["實際作答時間","82 分鐘","預估 75 分鐘"],["AI 提示使用","3 次","未提供完整答案"]].map(x=><div className="panel" key={x[0]}><small>{x[0]}</small><strong>{x[1]}</strong><span>{x[2]}</span></div>)}</div><section className="panel hr-result"><div><h2>招募結果</h2><p>此決策由 HR 根據完整面試摘要與團隊討論後確認。</p></div><div className="result-chip">{result}</div><Button onClick={()=>setModal("result")}>更新招募結果</Button></section><section className="panel"><div className="panel-head"><div><h2>能力摘要</h2><p>僅呈現招募決策需要的重點，不包含詳細程式碼分析</p></div></div><div className="ability-grid">{evals.map((e,i)=><div key={e[0]}><div><strong>{e[0]}</strong><span>{[4,4,3,4,2,4][i]} / 5</span></div><div className="bar"><i style={{width:`${[80,80,60,80,40,80][i]}%`}}/></div></div>)}</div></section></div>;
 }
 
-function CandidateFlow({ view, navigate, modal, setModal, setStatus, showToast }: { view: View; navigate:(v:View)=>void; modal:string; setModal:(m:""| "submit")=>void; setStatus:(s:Status)=>void; showToast:(s:string)=>void }) {
+function HrSummary({ result, status, setModal }: { result: string; status: Status; setModal: (m:"result")=>void }) {
+  return <div className="page review-page"><PageTitle title="陳怡安的面試摘要" text="Junior Data Analyst · 技術審核摘要" action={<Badge status={status} />} />
+    <div className="summary-banner"><div><small>技術主管建議</small><h2>建議進入下一階段</h2><p>SQL 基礎扎實、表達清楚；建議後續面談確認邊界條件敏感度。</p></div><div className="score-ring"><strong>21</strong><span>/ 30</span></div></div>
+    <div className="three-summary">{[["作答完成度","3 / 3","全數作答"],["實際作答時間","82 分鐘","預估 75 分鐘"],["AI 提示使用","3 次","未提供完整答案"]].map(x=><div className="panel" key={x[0]}><small>{x[0]}</small><strong>{x[1]}</strong><span>{x[2]}</span></div>)}</div>
+    <section className="panel hr-result"><div><h2>招募結果</h2><p>此決策由 HR 根據完整面試摘要與團隊討論後確認。</p></div><div className="result-chip">{result}</div><Button onClick={()=>setModal("result")}>更新招募結果</Button></section>
+    <section className="panel"><div className="panel-head"><div><h2>能力摘要</h2><p>僅呈現招募決策需要的重點，不包含詳細程式碼分析</p></div></div><div className="ability-grid">{evals.map((e,i)=><div key={e[0]}><div><strong>{e[0]}</strong><span>{[4,4,3,4,2,4][i]} / 5</span></div><div className="bar"><i style={{width:`${[80,80,60,80,40,80][i]}%`}}/></div></div>)}</div></section>
+  </div>;
+}
+
+function CandidateFlow({ view, navigate, modal, setModal, status, setStatus, showToast }: { view: View; navigate:(v:View)=>void; modal:string; setModal:(m:""| "submit")=>void; status: Status; setStatus:(s:Status)=>void; showToast:(s:string)=>void }) {
+  const examQs = [questions[0], questions[1], questions[7]];
+  const [email,setEmail]=useState("");
+  const [code,setCode]=useState("");
+  const [error,setError]=useState("");
+  const [confirmed,setConfirmed]=useState(false);
+  const [answers,setAnswers]=useState(["","", ""]);
+  const [q,setQ]=useState(0);
+  const [hints,setHints]=useState<{q:number;level:number;text:string;time:string}[]>([]);
+  const [remainingSeconds,setRemainingSeconds]=useState(75 * 60);
+  const [submitting,setSubmitting]=useState(false);
+  const submittedRef=useRef(false);
+  const progress: { completedCount:number; incompleteCount:number; incompleteIndexes:number[]; incompleteQuestions:string[] }=getAnswerProgress(answers, examQs.map(question=>question.title));
+  const verify=(e:React.FormEvent)=>{e.preventDefault();if(email.toLowerCase()===demoInterview.email&&code===demoInterview.code){setError("");navigate("brief")}else setError("Email 或驗證碼不正確，請確認後再試一次。");};
+  const submitInterview=(source:"manual"|"timeout")=>{const claim=claimSubmission(submittedRef.current,source);if(!claim.shouldSubmit)return;submittedRef.current=claim.submitted;setSubmitting(true);setModal("");setStatus("已提交");navigate("done");};
+  useEffect(()=>{if(view!=="exam"||submittedRef.current)return;const timer=window.setInterval(()=>setRemainingSeconds(value=>Math.max(0,value-1)),1000);return()=>window.clearInterval(timer);},[view]);
+  useEffect(()=>{if(view==="exam"&&remainingSeconds===0)submitInterview("timeout");},[view,remainingSeconds]);
+  const useHint=(level:number)=>{if(submittedRef.current)return;const texts=["先用自己的話重述輸入資料、要找的對象，以及輸出的欄位。","想想是否能先把同一天的登入去重，再為連續日期建立分組識別。","檢查空資料、同日多次登入，以及超過三天連續紀錄的處理。","可以比較每筆日期與排序序號的差值；連續日期會得到相同的分組鍵。"];const now=new Date().toLocaleTimeString("zh-TW",{hour:"2-digit",minute:"2-digit"});setHints(current=>[...current,{q:q+1,level,text:texts[level-1],time:now}]);showToast(`已記錄第 ${level} 級提示`);};
+
+  if(view==="verify") return <main className="candidate-entry"><div className="candidate-nav"><Brand /><button onClick={()=>location.reload()}>切換 Demo 角色</button></div><div className="verify-layout"><section><div className="eyebrow">候選人面試入口</div><h1>嗨，陳怡安<br/>準備好展現你的思考方式了嗎？</h1><p>完成身分驗證後，你會先看到面試說明與注意事項。</p><div className="interview-preview"><span>Junior Data Analyst</span><h2>資料分析技術面試</h2><div><span><Icon name="◷"/> 75 分鐘</span><span><Icon name="▤"/> 3 題</span><span><Icon name="⌁"/> 期限 8/2</span></div></div></section><form className="verify-card" onSubmit={verify}><div className="lock">⌁</div><h2>驗證面試身分</h2><p>請輸入邀請信中的 Email 與 6 位數驗證碼。</p><label>Email<input required type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com" /></label><label>6 位數驗證碼<input required className="code-input" value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="000000" inputMode="numeric" /></label>{error&&<div className="form-error" role="alert">! {error}</div>}<Button type="submit" disabled={!email||code.length!==6}>驗證並繼續 →</Button><div className="demo-credential"><strong>Demo 驗證資料</strong><span>{demoInterview.email}</span><span>{demoInterview.code}</span></div></form></div></main>;
+  if(view==="brief") return <main className="brief-page"><div className="candidate-nav"><Brand/><Badge status={status}/></div><section className="brief-card"><div className="brief-head"><span>資料分析技術面試</span><h1>開始前，請先閱讀面試說明</h1><p>Junior Data Analyst · 候選人：陳怡安</p></div><div className="brief-metrics"><div><Icon name="◷"/><strong>75 分鐘</strong><span>倒數計時</span></div><div><Icon name="▤"/><strong>3 題</strong><span>2 題 SQL · 1 題問答</span></div><div><Icon name="◇"/><strong>工作階段暫存</strong><span>重新整理後不保留</span></div></div><div className="instructions"><h2>作答須知</h2><ol><li><span>1</span><div><strong>安排不受打擾的時間</strong><p>面試開始後會持續倒數，無法暫停。</p></div></li><li><span>2</span><div><strong>可以使用 AI 提示</strong><p>共四級提示，使用紀錄會提供面試官參考，但不會顯示完整答案。</p></div></li><li><span>3</span><div><strong>提交前仔細確認</strong><p>提交後將無法返回或修改任何答案。</p></div></li></ol></div><label className="confirm-check"><input type="checkbox" checked={confirmed} onChange={e=>setConfirmed(e.target.checked)}/> 我已閱讀並了解以上說明，準備開始面試。</label><Button disabled={!confirmed} onClick={()=>{setStatus("作答中");navigate("exam")}}>開始面試</Button></section></main>;
+  if(view==="done") return <main className="done-page"><Brand/><section><span className="big-check">✓</span><div className="eyebrow">提交成功</div><h1>謝謝你完成面試，陳怡安。</h1><p>你的答案已在此 Demo 工作階段提交。HR 將在團隊完成審核後與你聯繫。</p><div className="receipt"><div><span>面試</span><strong>Junior Data Analyst 技術面試</strong></div><div><span>完成題數</span><strong>{progress.completedCount} / {answers.length}</strong></div><div><span>提交狀態</span><Badge status={status}/></div><div><span>AI 提示使用</span><strong>{hints.length} 次</strong></div></div><small>你現在可以安全關閉此頁面。</small></section></main>;
+  return <main className="exam"><header className="exam-top"><Brand/><div><strong>資料分析技術面試</strong><span>答案暫存於本工作階段</span></div><div className="timer"><small>剩餘時間</small><strong>{formatCountdown(remainingSeconds)}</strong></div><Button kind="danger" disabled={submitting} onClick={()=>setModal("submit")}>提交面試</Button></header><div className="exam-body"><aside className="q-nav"><h3>題目導覽</h3>{examQs.map((x,i)=><button key={x.id} className={q===i?"active":""} onClick={()=>setQ(i)}><span>{answers[i].trim()?"✓":i+1}</span><div><strong>{x.title}</strong><small>{x.type} · {x.minutes} 分鐘</small></div></button>)}<div className="nav-legend"><span><i className="answered"/>已作答</span><span><i/>未作答</span></div></aside><section className="workspace"><div className="question-content"><div className="q-kicker"><span>第 {q+1} 題，共 3 題</span><span className={`type type-${examQs[q].type}`}>{examQs[q].type}</span><span className={`difficulty d-${examQs[q].difficulty}`}>{examQs[q].difficulty}</span></div><h1>{examQs[q].title}</h1><p>{examQs[q].description}</p><div className="schema"><strong>{examQs[q].type==="技術問答"?"回答方向":"資料表結構／輸入輸出"}</strong><code>{examQs[q].detail}</code></div><div className="example"><strong>範例</strong><p>{examQs[q].example}</p></div></div><div className="editor"><div className="editor-bar"><span>{examQs[q].type==="SQL"?"SQL":"文字作答"}</span><span>工作階段已更新 ✓</span></div><textarea disabled={submitting||submittedRef.current} spellCheck={false} value={answers[q]} onChange={e=>setAnswers(current=>current.map((answer,i)=>i===q?e.target.value:answer))} placeholder={examQs[q].type==="技術問答"?"請輸入你的分析、判斷與理由…":"-- 在這裡輸入你的答案\nSELECT ..."} /></div><div className="exam-nav"><Button kind="secondary" disabled={q===0||submitting} onClick={()=>setQ(q-1)}>← 上一題</Button><span>第 {q+1} / 3 題</span><Button disabled={q===2||submitting} onClick={()=>setQ(q+1)}>下一題 →</Button></div></section><aside className="ai-panel"><div className="ai-title"><span>✦</span><div><h3>AI 思考提示</h3><p>幫你推進思路，不提供答案</p></div></div><div className="hint-levels">{[["重新解釋題意","用不同方式釐清這題在問什麼"],["提醒思考方向","提供一個開始分析的角度"],["檢查邊界條件","提醒可能遺漏的特殊情況"],["較明確的解題提示","給出更具體但非完整答案的提示"]].map((x,i)=><button disabled={submitting} key={x[0]} onClick={()=>useHint(i+1)}><span>{i+1}</span><div><strong>{x[0]}</strong><small>{x[1]}</small></div><b>→</b></button>)}</div>{hints.filter(h=>h.q===q+1).length>0&&<div className="current-hints"><h4>本題提示紀錄</h4>{hints.filter(h=>h.q===q+1).map((h,i)=><div key={i}><span>L{h.level}</span><p>{h.text}</p><small>{h.time}</small></div>)}</div>}<div className="ai-disclaimer"><Icon name="i"/>所有提示使用時間、題號與內容都會記錄供面試官參考。</div></aside></div>{modal==="submit"&&<div className="modal-backdrop"><div className="modal small"><div className="danger-icon">!</div><h2>確定要提交面試嗎？</h2><p>提交後將無法繼續修改任何答案。</p><div className="submission-summary"><strong>已完成 {progress.completedCount} 題</strong><strong>未完成 {progress.incompleteCount} 題</strong></div>{progress.incompleteCount>0&&<div className="form-error" role="alert"><strong>未作答題目：</strong><ul>{progress.incompleteQuestions.map((title,index)=><li key={title}>第 {progress.incompleteIndexes[index]+1} 題：{title}</li>)}</ul><span>你仍可確認提交未完成答案。</span></div>}<div className="modal-actions"><Button kind="secondary" disabled={submitting} onClick={()=>setModal("")}>返回檢查</Button><Button kind="danger" disabled={submitting} onClick={()=>submitInterview("manual")}>{submitting?"提交中…":"確認提交"}</Button></div></div></div>}</main>;
+}
+
+export function LegacyCandidateFlow({ view, navigate, modal, setModal, setStatus, showToast }: { view: View; navigate:(v:View)=>void; modal:string; setModal:(m:""| "submit")=>void; setStatus:(s:Status)=>void; showToast:(s:string)=>void }) {
   const [email,setEmail]=useState(""); const [code,setCode]=useState(""); const [error,setError]=useState(""); const [answers,setAnswers]=useState(["","", ""]); const [q,setQ]=useState(0); const [hints,setHints]=useState<{q:number;level:number;text:string;time:string}[]>([]);
   const verify=(e:React.FormEvent)=>{e.preventDefault();if(email.toLowerCase()===demoInterview.email&&code===demoInterview.code){setError("");navigate("brief")}else setError("Email 或驗證碼不正確，請確認後再試一次。");};
   if(view==="verify") return <main className="candidate-entry"><div className="candidate-nav"><Brand /><button onClick={()=>location.reload()}>切換 Demo 角色</button></div><div className="verify-layout"><section><div className="eyebrow">候選人面試入口</div><h1>嗨，陳怡安<br/>準備好展現你的思考方式了嗎？</h1><p>完成身分驗證後，你會先看到面試說明與注意事項。</p><div className="interview-preview"><span>Junior Data Analyst</span><h2>資料分析技術面試</h2><div><span><Icon name="◷"/> 75 分鐘</span><span><Icon name="▤"/> 3 題</span><span><Icon name="⌁"/> 期限 8/2</span></div></div></section><form className="verify-card" onSubmit={verify}><div className="lock">⌁</div><h2>驗證面試身分</h2><p>請輸入邀請信中的 Email 與 6 位數驗證碼。</p><label>Email<input type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com" /></label><label>6 位數驗證碼<input className="code-input" value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="000000" inputMode="numeric" /></label>{error&&<div className="form-error">! {error}</div>}<Button type="submit">驗證並繼續 →</Button><div className="demo-credential"><strong>Demo 驗證資料</strong><span>{demoInterview.email}</span><span>{demoInterview.code}</span></div></form></div></main>;
@@ -224,7 +266,22 @@ function CandidateFlow({ view, navigate, modal, setModal, setStatus, showToast }
   return <main className="exam"><header className="exam-top"><Brand/><div><strong>資料分析技術面試</strong><span>自動儲存於剛剛</span></div><div className="timer"><small>剩餘時間</small><strong>01:08:42</strong></div><Button kind="danger" onClick={()=>setModal("submit")}>提交面試</Button></header><div className="exam-body"><aside className="q-nav"><h3>題目導覽</h3>{examQs.map((x,i)=><button key={x.id} className={q===i?"active":""} onClick={()=>setQ(i)}><span>{answers[i]?"✓":i+1}</span><div><strong>{x.title}</strong><small>{x.type} · {x.minutes} 分鐘</small></div></button>)}<div className="nav-legend"><span><i className="answered"/>已作答</span><span><i/>未作答</span></div></aside><section className="workspace"><div className="question-content"><div className="q-kicker"><span>第 {q+1} 題，共 3 題</span><span className={`type type-${examQs[q].type}`}>{examQs[q].type}</span><span className={`difficulty d-${examQs[q].difficulty}`}>{examQs[q].difficulty}</span></div><h1>{examQs[q].title}</h1><p>{examQs[q].description}</p><div className="schema"><strong>{examQs[q].type==="技術問答"?"回答方向":"資料表結構／輸入輸出"}</strong><code>{examQs[q].detail}</code></div><div className="example"><strong>範例</strong><p>{examQs[q].example}</p></div></div><div className="editor"><div className="editor-bar"><span>{examQs[q].type==="SQL"?"SQL":examQs[q].type==="程式設計"?"JavaScript":"文字作答"}</span><span>已儲存 ✓</span></div><textarea spellCheck={false} value={answers[q]} onChange={e=>setAnswers(answers.map((a,i)=>i===q?e.target.value:a))} placeholder={examQs[q].type==="技術問答"?"請輸入你的分析、判斷與理由…":"-- 在這裡輸入你的答案\nSELECT ..."} /></div><div className="exam-nav"><Button kind="secondary" disabled={q===0} onClick={()=>setQ(q-1)}>← 上一題</Button><span>第 {q+1} / 3 題</span><Button disabled={q===2} onClick={()=>setQ(q+1)}>下一題 →</Button></div></section><aside className="ai-panel"><div className="ai-title"><span>✦</span><div><h3>AI 思考提示</h3><p>幫你推進思路，不提供答案</p></div></div><div className="hint-levels">{[["重新解釋題意","用不同方式釐清這題在問什麼"],["提醒思考方向","提供一個開始分析的角度"],["檢查邊界條件","提醒可能遺漏的特殊情況"],["較明確的解題提示","給出更具體但非完整答案的提示"]].map((x,i)=><button key={x[0]} onClick={()=>useHint(i+1)}><span>{i+1}</span><div><strong>{x[0]}</strong><small>{x[1]}</small></div><b>→</b></button>)}</div>{hints.filter(h=>h.q===q+1).length>0&&<div className="current-hints"><h4>本題提示紀錄</h4>{hints.filter(h=>h.q===q+1).map((h,i)=><div key={i}><span>L{h.level}</span><p>{h.text}</p><small>{h.time}</small></div>)}</div>}<div className="ai-disclaimer"><Icon name="i"/>所有提示使用時間、題號與內容都會記錄供面試官參考。</div></aside></div>{modal==="submit"&&<div className="modal-backdrop"><div className="modal small"><div className="danger-icon">!</div><h2>確定要提交面試嗎？</h2><p>提交後將無法繼續修改任何答案。你目前完成 <strong>{answers.filter(Boolean).length} / 3</strong> 題。</p>{answers.filter(Boolean).length<3&&<div className="form-error">尚有 {3-answers.filter(Boolean).length} 題未作答</div>}<div className="modal-actions"><Button kind="secondary" onClick={()=>setModal("")}>返回檢查</Button><Button kind="danger" onClick={()=>{setStatus("已提交");setModal("");navigate("done")}}>確認提交</Button></div></div></div>}</main>;
 }
 
-function NewCandidate({ onClose, onSave }: { onClose:()=>void; onSave:(c:typeof seedCandidates[number])=>void }) {
+function NewCandidate({ candidates, onClose, onSave }: { candidates: typeof seedCandidates; onClose:()=>void; onSave:(c:typeof seedCandidates[number])=>void }) {
+  const [name,setName]=useState("");
+  const [email,setEmail]=useState("");
+  const [job,setJob]=useState("");
+  const [lead,setLead]=useState("");
+  const [due,setDue]=useState("");
+  const [errors,setErrors]=useState<string[]>([]);
+  const [saving,setSaving]=useState(false);
+  const jobs=useMemo(()=>[...new Set(candidates.map(candidate=>candidate.job))].sort(),[candidates]);
+  const leads=useMemo(()=>[...new Set(candidates.map(candidate=>candidate.lead))].sort(),[candidates]);
+  const requiredReady=Boolean(name.trim()&&email.trim()&&job&&lead&&due);
+  const submit=(event:React.FormEvent)=>{event.preventDefault();if(saving)return;const nextErrors:string[]=[];if(!name.trim()||!email.trim()||!job||!lead||!due)nextErrors.push("請完整填寫所有必填欄位。");if(email.trim()&&!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim()))nextErrors.push("請輸入有效的 Email 格式。");if(due&&new Date(due).getTime()<=Date.now())nextErrors.push("面試期限必須晚於目前時間。");setErrors(nextErrors);if(nextErrors.length)return;setSaving(true);onSave({candidate:name.trim(),email:email.trim().toLowerCase(),job,lead,due:due.replace("T"," "),code:String(Math.floor(100000+Math.random()*900000)),url:`talentscope.demo/i/${Date.now()}`,status:"草稿"});};
+  return <div className="modal-backdrop"><form className="modal" onSubmit={submit} noValidate><div className="modal-head"><div><h2>新增候選人</h2><p>建立候選人資料並指派技術主管。</p></div><button type="button" onClick={onClose}>×</button></div>{errors.length>0&&<div className="form-error" role="alert"><strong>無法建立候選人：</strong><ul>{errors.map(message=><li key={message}>{message}</li>)}</ul></div>}<fieldset><legend>基本資料</legend><div className="form-grid"><label>候選人姓名<input required value={name} onChange={e=>setName(e.target.value)} placeholder="例：陳怡安"/></label><label>Email<input required type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com"/></label></div></fieldset><fieldset><legend>面試安排</legend><div className="form-grid"><label>應徵職缺<select required value={job} onChange={e=>setJob(e.target.value)}><option value="">請選擇職缺</option>{jobs.map(value=><option key={value}>{value}</option>)}</select></label><label>技術主管<select required value={lead} onChange={e=>setLead(e.target.value)}><option value="">請選擇技術主管</option>{leads.map(value=><option key={value}>{value}</option>)}</select></label><label className="full">面試期限<input required type="datetime-local" value={due} onChange={e=>setDue(e.target.value)}/></label></div></fieldset><div className="modal-actions"><Button kind="secondary" disabled={saving} onClick={onClose}>取消</Button><Button type="submit" disabled={!requiredReady||saving}>{saving?"建立中…":"建立候選人與面試"}</Button></div></form></div>;
+}
+
+export function LegacyNewCandidate({ onClose, onSave }: { onClose:()=>void; onSave:(c:typeof seedCandidates[number])=>void }) {
   const [name,setName]=useState(""); const [email,setEmail]=useState("");
   return <div className="modal-backdrop"><form className="modal" onSubmit={e=>{e.preventDefault();onSave({candidate:name,email,job:"Junior Data Analyst",lead:"王柏翰",due:"2026/08/08 18:00",code:"284631",url:"talentscope.demo/i/DA-260808",status:"草稿"})}}><div className="modal-head"><div><h2>新增候選人</h2><p>建立候選人資料並指派技術主管。</p></div><button type="button" onClick={onClose}>×</button></div><fieldset><legend>基本資料</legend><div className="form-grid"><label>候選人姓名<input required value={name} onChange={e=>setName(e.target.value)} placeholder="例：陳怡安"/></label><label>Email<input required type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="name@example.com"/></label></div></fieldset><fieldset><legend>面試安排</legend><div className="form-grid"><label>應徵職缺<select><option>Junior Data Analyst</option><option>Backend Engineer</option><option>Product Analyst</option></select></label><label>技術主管<select><option>王柏翰</option><option>李欣蓉</option></select></label><label className="full">面試期限<input type="datetime-local" defaultValue="2026-08-08T18:00"/></label></div></fieldset><div className="modal-actions"><Button kind="secondary" onClick={onClose}>取消</Button><Button type="submit">建立候選人與面試</Button></div></form></div>;
 }
