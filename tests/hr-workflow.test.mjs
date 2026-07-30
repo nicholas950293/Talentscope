@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { filterCandidates } from "../app/demoLogic.mjs";
+import { filterCandidates } from "../app/domain/interviewWorkflow.mjs";
 import {
   buildCandidateRecord,
   generateInterviewCode,

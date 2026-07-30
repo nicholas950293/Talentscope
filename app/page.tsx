@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import DemoApp from "./DemoApp";
+import TalentScopeApp from "./TalentScopeApp";
 
 export const metadata: Metadata = {
   title: "Talentscope｜面試協作平台",
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function Home() {
-  return <DemoApp />;
+  return <TalentScopeApp />;
 }

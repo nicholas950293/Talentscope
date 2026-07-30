@@ -7,7 +7,7 @@ import {
   filterCandidates,
   getAnswerProgress,
   isLegalInterviewStatus,
-} from "../app/demoLogic.mjs";
+} from "../app/domain/interviewWorkflow.mjs";
 
 const candidates = [
   { candidate: "陳怡安", email: "yian@example.com", job: "Junior Data Analyst", lead: "王柏翰", status: "等待人工審核" },

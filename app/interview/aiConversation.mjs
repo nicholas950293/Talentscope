@@ -1,3 +1,4 @@
+// Pure reducer for question-scoped candidate assistant conversations.
 export const createAIConversationState = () => ({
   messages: [],
   pendingByQuestion: {},

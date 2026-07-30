@@ -1,4 +1,4 @@
-import type { AIConversationAction, AIConversationMessage, AIConversationState } from "./types";
+import type { AIConversationAction, AIConversationMessage, AIConversationState } from "../domain/types";
 
 export function createAIConversationState(): AIConversationState;
 export function messagesForQuestion(state: AIConversationState, questionId: number): AIConversationMessage[];

@@ -1,3 +1,4 @@
+// Pure Tech Lead workflow helpers for question selection, ordering, and review.
 export function filterQuestionBank(questions, filters = {}) {
   const query = String(filters.query || "").trim().toLocaleLowerCase();
   const type = filters.type || "全部";

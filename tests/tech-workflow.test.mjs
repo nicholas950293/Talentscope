@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { questions } from "../app/demo/data.ts";
-import { filterQuestionBank, getPaperSummary, moveSelectedQuestion, toggleQuestionSelection, updateReviewerScore } from "../app/demo/tech/workflow.mjs";
+import { questions } from "../app/mocks/data.ts";
+import { filterQuestionBank, getPaperSummary, moveSelectedQuestion, toggleQuestionSelection, updateReviewerScore } from "../app/flows/tech/workflow.mjs";
 
 test("TC-QBANK-001 關鍵字可搜尋題名、描述與技能", () => {
   assert.deepEqual(filterQuestionBank(questions, { query: "留存" }).map(question => question.id), [2]);

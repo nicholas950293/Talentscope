@@ -1,4 +1,4 @@
-import type { Candidate, Interview, Question } from "./types";
+import type { Candidate, Interview, Question } from "../domain/types";
 
 export const questions: Question[] = [
   { id: 1, title: "找出連續活躍用戶", type: "SQL", difficulty: "中等", skills: ["SQL", "Window Function"], minutes: 25, description: "找出連續三天都有登入紀錄的使用者。", detail: "login_events(user_id INT, login_at TIMESTAMP)。同一天多次登入只計一次。", example: "輸出：user_id、streak_start、streak_end", rubric: "去重 20%、日期分組 35%、連續區間判斷 45%" },

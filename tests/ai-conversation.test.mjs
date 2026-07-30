@@ -5,8 +5,8 @@ import {
   createAIConversationState,
   messagesForQuestion,
   reduceAIConversation,
-} from "../app/demo/aiConversation.mjs";
-import { createMockCandidateAIService } from "../app/demo/mockCandidateAIService.mjs";
+} from "../app/interview/aiConversation.mjs";
+import { createMockCandidateAIService } from "../app/mocks/mockCandidateAIService.mjs";
 
 const begin = (state, overrides = {}) => reduceAIConversation(state, {
   type: "begin",

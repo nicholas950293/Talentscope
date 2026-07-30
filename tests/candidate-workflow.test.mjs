@@ -1,9 +1,9 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { getAnswerProgress } from "../app/demoLogic.mjs";
-import { createAIConversationState, reduceAIConversation } from "../app/demo/aiConversation.mjs";
-import { createInterviewSession, reduceInterviewSession } from "../app/demo/interviewController.mjs";
-import { createMockCandidateAIService, isMockGuidanceSafe } from "../app/demo/mockCandidateAIService.mjs";
+import { getAnswerProgress } from "../app/domain/interviewWorkflow.mjs";
+import { createAIConversationState, reduceAIConversation } from "../app/interview/aiConversation.mjs";
+import { createInterviewSession, reduceInterviewSession } from "../app/interview/interviewController.mjs";
+import { createMockCandidateAIService, isMockGuidanceSafe } from "../app/mocks/mockCandidateAIService.mjs";
 import { shouldSendAIMessageFromKeyboard, validateCandidateCredentials } from "../app/flows/candidate/candidateWorkflow.mjs";
 
 const expectedCredentials = { email: "yian.chen@example.com", code: "482916" };

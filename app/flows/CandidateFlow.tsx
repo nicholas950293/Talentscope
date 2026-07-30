@@ -1,13 +1,13 @@
 "use client";
 
 import { useEffect, useMemo, useReducer, useRef, useState } from "react";
-import { formatCountdown, getAnswerProgress } from "../demoLogic.mjs";
-import { demoInterview, questions } from "../demo/data";
-import { canSendAIMessage, createAIConversationState, messagesForQuestion, reduceAIConversation } from "../demo/aiConversation.mjs";
-import { createInterviewSession, reduceInterviewSession } from "../demo/interviewController.mjs";
-import { createMockCandidateAIService } from "../demo/mockCandidateAIService.mjs";
-import { Badge, Brand, Button, Icon } from "../demo/shared";
-import type { AIConversationAction, AIConversationMessage, AIConversationState, InterviewStatus, View } from "../demo/types";
+import { formatCountdown, getAnswerProgress } from "../domain/interviewWorkflow.mjs";
+import type { AIConversationAction, AIConversationMessage, AIConversationState, InterviewStatus, View } from "../domain/types";
+import { canSendAIMessage, createAIConversationState, messagesForQuestion, reduceAIConversation } from "../interview/aiConversation.mjs";
+import { createInterviewSession, reduceInterviewSession } from "../interview/interviewController.mjs";
+import { demoInterview, questions } from "../mocks/data";
+import { createMockCandidateAIService } from "../mocks/mockCandidateAIService.mjs";
+import { Badge, Brand, Button, Icon } from "../shared/ui";
 import { shouldSendAIMessageFromKeyboard, validateCandidateCredentials } from "./candidate/candidateWorkflow.mjs";
 
 type Props = {

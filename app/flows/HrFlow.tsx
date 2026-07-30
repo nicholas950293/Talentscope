@@ -1,9 +1,9 @@
 "use client";
 
 import { useMemo, useState, type ReactNode } from "react";
-import { filterCandidates, INTERVIEW_STATUSES } from "../demoLogic.mjs";
-import { Badge, Button, Icon } from "../demo/shared";
-import type { Candidate, View } from "../demo/types";
+import { filterCandidates, INTERVIEW_STATUSES } from "../domain/interviewWorkflow.mjs";
+import type { Candidate, View } from "../domain/types";
+import { Badge, Button, Icon } from "../shared/ui";
 import {
   buildCandidateRecord,
   generateInterviewCode,
