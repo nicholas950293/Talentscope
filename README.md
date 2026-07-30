@@ -45,7 +45,7 @@ Email：yian.chen@example.com
 - Tailwind CSS 4、PostCSS 與手寫共用樣式
 - vinext、Vite 8、Cloudflare Worker 相容 build
 - Drizzle ORM／D1 骨架；目前 schema 為空且未啟用 D1 binding
-- Node.js test runner 的 SSR smoke test
+- Node.js test runner 的 domain/reducer 單元測試與 SSR smoke test
 
 ## 安裝與啟動
 
@@ -77,7 +77,9 @@ npm run build
 
 ```text
 app/
-  DemoApp.tsx          三角色頁面、Demo 資料與互動狀態
+  DemoApp.tsx          Demo 入口、共用 state 與角色流程協調
+  demo/                共用型別、Demo 資料、UI 與面試 reducer
+  flows/               HR、Tech Lead、Candidate 角色流程邊界
   globals.css          設計 token、元件樣式與 RWD
   page.tsx             首頁路由
   layout.tsx           根 layout 與 metadata
@@ -85,7 +87,7 @@ db/
   index.ts             D1／Drizzle 連線 helper
   schema.ts            目前為空
 docs/                  專案規格與協作文件
-tests/                 SSR smoke test
+tests/                 純邏輯／reducer 測試與 SSR smoke test
 worker/                vinext Cloudflare Worker 入口
 ```
 
@@ -110,19 +112,19 @@ worker/                vinext Cloudflare Worker 入口
 - 候選人、職缺、題目、答案、統計與面試狀態資料。
 - Email 邀請、專屬連結、驗證碼、複製與寄送回饋。
 - AI 四級提示與六面向 AI 初評。
-- 自動儲存、倒數時間、各題停留時間與分析進度。
+- 自動儲存、各題停留時間與分析進度；倒數雖有前端 reducer，仍沒有持久化或伺服器時間來源。
 - 人工評分、備註、技術建議與 HR 結果的資料持久化。
 
 AI 不會、也不應自動決定錄取或淘汰。
 
 ## 已知限制
 
-- 單一路由與單一大型 Client Component，尚未依 domain 拆分。
+- 單一路由；角色 flow、共用型別與候選人 reducer 已拆分，但技術主管部分展示 view 仍集中於 `DemoApp.tsx`。
 - 所有產品資料在記憶體中，重新整理即重置。
 - 無正式 API、資料庫、身分驗證、RBAC、Interview Token 或 Audit Log。
 - `chatgpt-auth.ts` helper 存在，但目前產品頁未使用。
 - 無正式 Email、AI、程式碼執行、自動判題、錄影或防作弊功能。
-- 自動化測試只涵蓋首頁 SSR；主要互動、RWD 與無障礙尚待補齊。
+- 自動化測試涵蓋核心 reducer、篩選／狀態純邏輯與首頁 SSR；React 元件、完整互動、RWD 與無障礙仍待補齊。
 
 ## Roadmap
 

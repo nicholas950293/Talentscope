@@ -4,10 +4,14 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { INTERVIEW_STATUSES, claimSubmission, filterCandidates, formatCountdown, getAnswerProgress } from "./demoLogic.mjs";
+import { CandidateFlow as CandidateRoleFlow } from "./flows/CandidateFlow";
+import { HrFlow, NewCandidate as NewCandidateForm } from "./flows/HrFlow";
+import { TechLeadFlow } from "./flows/TechLeadFlow";
+import type { InterviewStatus } from "./demo/types";
 
 type Role = "login" | "hr" | "lead" | "candidate";
 type View = "dashboard" | "candidates" | "questions" | "builder" | "review" | "invite" | "verify" | "brief" | "exam" | "done";
-type Status = "草稿" | "待寄送" | "等待面試者開始" | "作答中" | "已提交" | "AI 分析中" | "等待人工審核" | "已完成" | "已過期";
+type Status = InterviewStatus;
 type Question = {
   id: number; title: string; type: "SQL" | "程式設計" | "技術問答"; difficulty: "簡單" | "中等" | "困難";
   skills: string[]; minutes: number; description: string; detail: string; example: string; rubric: string;
@@ -56,7 +60,7 @@ export default function DemoApp() {
   const navigate = (v: View) => { setView(v); window.scrollTo({ top: 0, behavior: "smooth" }); };
 
   if (role === "login") return <Login onEnter={enter} />;
-  if (role === "candidate") return <CandidateFlow view={view} navigate={navigate} modal={modal} setModal={setModal} status={status} setStatus={setStatus} showToast={showToast} />;
+  if (role === "candidate") return <CandidateRoleFlow view={view} navigate={navigate} modal={modal} setModal={setModal} status={status} setStatus={setStatus} showToast={showToast} />;
 
   const visibleCandidates = candidates.map(candidate => candidate.email === demoInterview.email ? { ...candidate, status } : candidate);
 
@@ -76,18 +80,11 @@ export default function DemoApp() {
     </aside>
     <main className="main">
       <header className="topbar"><div className="mobile-brand"><Brand /></div><div className="crumb">Talentscope <span>/</span> {nav.find(n => n.id === view)?.label || "詳情"}</div><div className="top-actions"><button className="icon-btn">⌕</button><button className="icon-btn notification">♢</button></div></header>
-      {role === "hr" && view === "dashboard" && <HrDashboard candidates={visibleCandidates} setModal={setModal} navigate={navigate} result={result} />}
-      {role === "hr" && view === "candidates" && <CandidateList candidates={visibleCandidates} setModal={setModal} navigate={navigate} />}
-      {role === "hr" && view === "review" && <HrSummary result={result} status={status} setModal={setModal} />}
-      {role === "lead" && view === "dashboard" && <LeadDashboard navigate={navigate} status={status} />}
-      {role === "lead" && view === "questions" && <QuestionBank selected={selected} setSelected={setSelected} setModal={setModal} navigate={navigate} showToast={showToast} />}
-      {role === "lead" && view === "builder" && <Builder selected={selected} setSelected={setSelected} navigate={navigate} showToast={showToast} />}
-      {role === "lead" && view === "invite" && <Invite navigate={navigate} showToast={showToast} />}
-      {role === "lead" && view === "review" && <TechReview navigate={navigate} showToast={showToast} status={status} />}
-      {role === "lead" && view === "candidates" && <TechReview navigate={navigate} showToast={showToast} status={status} />}
+      {role === "hr" && <HrFlow view={view} candidates={visibleCandidates} setModal={setModal} navigate={navigate} dashboard={<HrDashboard candidates={visibleCandidates} setModal={setModal} navigate={navigate} result={result} />} summary={<HrSummary result={result} status={status} setModal={setModal} />} />}
+      {role === "lead" && <TechLeadFlow view={view} dashboard={<LeadDashboard navigate={navigate} status={status} />} questions={<QuestionBank selected={selected} setSelected={setSelected} setModal={setModal} navigate={navigate} showToast={showToast} />} builder={<Builder selected={selected} setSelected={setSelected} navigate={navigate} showToast={showToast} />} invite={<Invite navigate={navigate} showToast={showToast} />} review={<TechReview navigate={navigate} showToast={showToast} status={status} />} />}
       {toast && <Toast text={toast} />}
     </main>
-    {modal === "candidate" && <NewCandidate candidates={candidates} onClose={() => setModal("")} onSave={(c) => { setCandidates([c, ...candidates]); setModal(""); showToast("候選人與面試邀請已建立"); }} />}
+    {modal === "candidate" && <NewCandidateForm candidates={candidates} onClose={() => setModal("")} onSave={(c) => { setCandidates([c, ...candidates]); setModal(""); showToast("候選人與面試邀請已建立"); }} />}
     {modal === "result" && <ResultModal result={result} onClose={() => setModal("")} onSave={(v) => { setResult(v); setStatus("已完成"); setModal(""); showToast("招募結果已更新"); }} />}
     {modal === "question" && <QuestionEditor onClose={() => setModal("")} showToast={showToast} />}
   </div>;
@@ -140,7 +137,7 @@ function CandidateTable({ rows, onOpen }: { rows: typeof seedCandidates; onOpen:
   return <div className="table-wrap"><table><thead><tr><th>候選人</th><th>應徵職缺</th><th>技術主管</th><th>面試期限</th><th>狀態</th><th></th></tr></thead><tbody>{rows.map(r => <tr key={r.email}><td><div className="person"><span>{r.candidate.slice(-1)}</span><div><strong>{r.candidate}</strong><small>{r.email}</small></div></div></td><td>{r.job}</td><td>{r.lead}</td><td>{r.due.split(" ")[0]}</td><td><Badge status={r.status} /></td><td><button className="more" onClick={() => onOpen(r)}>查看詳情</button></td></tr>)}</tbody></table></div>;
 }
 
-function CandidateList({ candidates, setModal, navigate }: { candidates: typeof seedCandidates; setModal: (m: "candidate") => void; navigate: (v: View) => void }) {
+export function Sprint3CandidateListSnapshot({ candidates, setModal, navigate }: { candidates: typeof seedCandidates; setModal: (m: "candidate") => void; navigate: (v: View) => void }) {
   const [query, setQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [jobFilter, setJobFilter] = useState("");
@@ -230,7 +227,7 @@ function HrSummary({ result, status, setModal }: { result: string; status: Statu
   </div>;
 }
 
-function CandidateFlow({ view, navigate, modal, setModal, status, setStatus, showToast }: { view: View; navigate:(v:View)=>void; modal:string; setModal:(m:""| "submit")=>void; status: Status; setStatus:(s:Status)=>void; showToast:(s:string)=>void }) {
+export function Sprint3CandidateFlowSnapshot({ view, navigate, modal, setModal, status, setStatus, showToast }: { view: View; navigate:(v:View)=>void; modal:string; setModal:(m:""| "submit")=>void; status: Status; setStatus:(s:Status)=>void; showToast:(s:string)=>void }) {
   const examQs = [questions[0], questions[1], questions[7]];
   const [email,setEmail]=useState("");
   const [code,setCode]=useState("");
@@ -266,7 +263,7 @@ export function LegacyCandidateFlow({ view, navigate, modal, setModal, setStatus
   return <main className="exam"><header className="exam-top"><Brand/><div><strong>資料分析技術面試</strong><span>自動儲存於剛剛</span></div><div className="timer"><small>剩餘時間</small><strong>01:08:42</strong></div><Button kind="danger" onClick={()=>setModal("submit")}>提交面試</Button></header><div className="exam-body"><aside className="q-nav"><h3>題目導覽</h3>{examQs.map((x,i)=><button key={x.id} className={q===i?"active":""} onClick={()=>setQ(i)}><span>{answers[i]?"✓":i+1}</span><div><strong>{x.title}</strong><small>{x.type} · {x.minutes} 分鐘</small></div></button>)}<div className="nav-legend"><span><i className="answered"/>已作答</span><span><i/>未作答</span></div></aside><section className="workspace"><div className="question-content"><div className="q-kicker"><span>第 {q+1} 題，共 3 題</span><span className={`type type-${examQs[q].type}`}>{examQs[q].type}</span><span className={`difficulty d-${examQs[q].difficulty}`}>{examQs[q].difficulty}</span></div><h1>{examQs[q].title}</h1><p>{examQs[q].description}</p><div className="schema"><strong>{examQs[q].type==="技術問答"?"回答方向":"資料表結構／輸入輸出"}</strong><code>{examQs[q].detail}</code></div><div className="example"><strong>範例</strong><p>{examQs[q].example}</p></div></div><div className="editor"><div className="editor-bar"><span>{examQs[q].type==="SQL"?"SQL":examQs[q].type==="程式設計"?"JavaScript":"文字作答"}</span><span>已儲存 ✓</span></div><textarea spellCheck={false} value={answers[q]} onChange={e=>setAnswers(answers.map((a,i)=>i===q?e.target.value:a))} placeholder={examQs[q].type==="技術問答"?"請輸入你的分析、判斷與理由…":"-- 在這裡輸入你的答案\nSELECT ..."} /></div><div className="exam-nav"><Button kind="secondary" disabled={q===0} onClick={()=>setQ(q-1)}>← 上一題</Button><span>第 {q+1} / 3 題</span><Button disabled={q===2} onClick={()=>setQ(q+1)}>下一題 →</Button></div></section><aside className="ai-panel"><div className="ai-title"><span>✦</span><div><h3>AI 思考提示</h3><p>幫你推進思路，不提供答案</p></div></div><div className="hint-levels">{[["重新解釋題意","用不同方式釐清這題在問什麼"],["提醒思考方向","提供一個開始分析的角度"],["檢查邊界條件","提醒可能遺漏的特殊情況"],["較明確的解題提示","給出更具體但非完整答案的提示"]].map((x,i)=><button key={x[0]} onClick={()=>useHint(i+1)}><span>{i+1}</span><div><strong>{x[0]}</strong><small>{x[1]}</small></div><b>→</b></button>)}</div>{hints.filter(h=>h.q===q+1).length>0&&<div className="current-hints"><h4>本題提示紀錄</h4>{hints.filter(h=>h.q===q+1).map((h,i)=><div key={i}><span>L{h.level}</span><p>{h.text}</p><small>{h.time}</small></div>)}</div>}<div className="ai-disclaimer"><Icon name="i"/>所有提示使用時間、題號與內容都會記錄供面試官參考。</div></aside></div>{modal==="submit"&&<div className="modal-backdrop"><div className="modal small"><div className="danger-icon">!</div><h2>確定要提交面試嗎？</h2><p>提交後將無法繼續修改任何答案。你目前完成 <strong>{answers.filter(Boolean).length} / 3</strong> 題。</p>{answers.filter(Boolean).length<3&&<div className="form-error">尚有 {3-answers.filter(Boolean).length} 題未作答</div>}<div className="modal-actions"><Button kind="secondary" onClick={()=>setModal("")}>返回檢查</Button><Button kind="danger" onClick={()=>{setStatus("已提交");setModal("");navigate("done")}}>確認提交</Button></div></div></div>}</main>;
 }
 
-function NewCandidate({ candidates, onClose, onSave }: { candidates: typeof seedCandidates; onClose:()=>void; onSave:(c:typeof seedCandidates[number])=>void }) {
+export function Sprint3NewCandidateSnapshot({ candidates, onClose, onSave }: { candidates: typeof seedCandidates; onClose:()=>void; onSave:(c:typeof seedCandidates[number])=>void }) {
   const [name,setName]=useState("");
   const [email,setEmail]=useState("");
   const [job,setJob]=useState("");

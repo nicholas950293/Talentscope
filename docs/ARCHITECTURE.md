@@ -6,20 +6,22 @@
 
 | 層次 | 技術 | 現況 |
 |---|---|---|
-| UI | React 19.2.6、TypeScript 5.9.3 | `DemoApp.tsx` 為主要 Client Component |
+| UI | React 19.2.6、TypeScript 5.9.3 | `DemoApp.tsx` 協調共用 state；角色 flow 與共用 domain 模組已拆分 |
 | App framework | Next.js 16.2.6 App Router | `app/page.tsx`、`app/layout.tsx` |
 | Build/runtime | vinext 0.0.50、Vite 8、Cloudflare Worker plugin | `npm run dev/build/start` 皆走 vinext |
 | Style | Tailwind CSS 4、PostCSS、手寫 CSS | `@import "tailwindcss"`；畫面主要由 `globals.css` 類別實作 |
 | Data | React `useState` 與檔案內常數 | 沒有 API 或資料持久化 |
 | Database | Drizzle/D1 骨架 | `db/schema.ts` 為空，D1 binding 未啟用 |
-| Test | Node test runner | 一個首頁 SSR smoke test |
+| Test | Node test runner | 純函式／reducer 單元測試與首頁 SSR smoke test |
 
 ## 2. 專案目錄結構
 
 ```text
 .
 ├─ app/
-│  ├─ DemoApp.tsx          # 所有角色、Demo 資料、頁面與互動
+│  ├─ DemoApp.tsx          # Demo 入口、共用 state、導覽、Modal／Toast 協調
+│  ├─ demo/                # 共用型別、資料、UI 與候選人面試 reducer
+│  ├─ flows/               # HR、Tech Lead、Candidate 角色流程邊界
 │  ├─ globals.css          # 設計 token、元件樣式與 RWD
 │  ├─ layout.tsx           # 根 layout 與 metadata
 │  ├─ page.tsx             # 唯一路由，掛載 DemoApp
@@ -28,7 +30,7 @@
 │  ├─ index.ts             # D1/Drizzle 連線 helper
 │  └─ schema.ts            # 目前為空
 ├─ worker/index.ts         # vinext Cloudflare Worker 入口
-├─ tests/rendered-html.test.mjs
+├─ tests/                  # domain/reducer 單元測試與 SSR smoke test
 ├─ docs/                   # Sprint 2 規格基線
 ├─ package.json
 ├─ postcss.config.mjs
@@ -42,7 +44,12 @@
 | 模組／元件 | 責任 | 狀態 |
 |---|---|---|
 | `Home` | 提供 `/` 路由並掛載 DemoApp | Implemented |
-| `DemoApp` | 角色、導覽、共用 state、Modal 與主畫面分派 | Implemented／Mock data |
+| `DemoApp` | Demo 入口、角色切換、跨角色工作階段 state、Modal／Toast 與角色 flow 組合 | Implemented／Mock data |
+| `flows/HrFlow` | HR 畫面分派、候選人複合篩選與新增候選人表單 | Implemented in memory |
+| `flows/TechLeadFlow` | 技術主管工作台、題庫、組卷、邀請與審核的畫面邊界 | Implemented UI／Mock service |
+| `flows/CandidateFlow` | 驗證、說明、作答、提示、提交與完成；實際使用 reducer | Implemented UI／Mock verification |
+| `demo/interviewController` | 倒數、切題、答案更新、手動／逾時單次提交與提交後鎖定 | Implemented pure reducer |
+| `demo/types`、`demoLogic` | 共用資料型別、九種合法狀態、篩選與完成度邏輯 | Implemented |
 | `Login` | 選擇 HR、技術主管或面試者 Demo | Mock |
 | `HrDashboard`、`CandidateList`、`HrSummary` | HR 進度、候選人與招募摘要 | Implemented UI／Mock data |
 | `LeadDashboard`、`QuestionBank`、`Builder`、`Invite` | 技術主管工作台、題庫、組卷與邀請 | Implemented UI／Mock service |
@@ -55,11 +62,14 @@
 ```mermaid
 flowchart TD
     Route["app/page.tsx<br/>Home"] --> Demo["DemoApp<br/>Client Component"]
-    Demo --> Role["role / view state"]
-    Demo --> Data["questions / candidates / evaluations<br/>檔案內 Mock 常數"]
-    Role --> HR["HR views"]
-    Role --> Tech["技術主管 views"]
-    Role --> Cand["面試者 CandidateFlow"]
+    Demo --> Role["role / view / shared Demo state"]
+    Demo --> HR["HrFlow"]
+    Demo --> Tech["TechLeadFlow"]
+    Demo --> Cand["CandidateFlow"]
+    Cand --> Controller["interviewController reducer"]
+    HR --> Types["shared types / legal statuses"]
+    Tech --> Types
+    Cand --> Types
     HR --> UI["共用 Badge / Button / Modal / Toast"]
     Tech --> UI
     Cand --> UI
@@ -77,20 +87,20 @@ flowchart TD
 - `selected`：已選題目 ID 與組卷順序。
 - `status`：單一 Demo 面試狀態；目前沒有完整狀態機。
 - `candidates`、`result`：新增候選人與 HR 結果的工作階段資料。
-- `answers`、`hints`：候選人答案與提示紀錄。
+- `CandidateFlow` 內的 reducer state：答案、目前題目、剩餘秒數、提交鎖與提交來源；提示紀錄仍是局部 state。
 - `scores`、`note`：技術主管人工評分與備註。
 
 重新整理頁面會重置全部 state。不同角色畫面雖共享部分 state，但沒有伺服器同步或多使用者一致性。
 
 ## 6. Demo 資料與模擬方式
 
-- 12 題 SQL、程式設計、技術問答直接宣告於 `DemoApp.tsx`。
+- `demo/data.ts` 提供角色 flow 可用的 12 題、Demo 面試與候選人 typed data；`DemoApp.tsx` 尚保留技術主管既有展示資料，避免本輪大範圍改寫。
 - `demoInterview` 與 `seedCandidates` 提供陳怡安等候選人情境。
 - 角色切換只修改前端 `role`，不是登入或授權。
 - 驗證只比對固定 Email `yian.chen@example.com` 與驗證碼 `482916`。
 - AI 提示由四段固定文字依等級回傳，並在記憶體記錄題號、時間、等級、內容。
 - AI 初評與證據由 `evals` 固定資料顯示；人工評分只更新當前元件 state。
-- Email、複製、自動儲存與倒數計時只呈現 UI 或 Toast。
+- Email、複製與自動儲存仍只呈現 UI 或 Toast；倒數與單次提交已由前端 reducer 實作，但不具持久化或後端冪等保證。
 
 ## 7. 三角色面試流程
 
@@ -113,7 +123,7 @@ flowchart LR
 
 ## 8. 面試狀態管理
 
-九種合法顯示名稱集中在 `Status` union 與 `statuses` 陣列：草稿、待寄送、等待面試者開始、作答中、已提交、AI 分析中、等待人工審核、已完成、已過期。
+九種合法顯示名稱由 `demoLogic.mjs` 的 `INTERVIEW_STATUSES` 單一 runtime 清單定義，TypeScript 透過共用型別衍生，Badge 也使用同一清單：草稿、待寄送、等待面試者開始、作答中、已提交、AI 分析中、等待人工審核、已完成、已過期。
 
 ```mermaid
 stateDiagram-v2
@@ -129,7 +139,7 @@ stateDiagram-v2
     等待面試者開始 --> 已過期: 到期
 ```
 
-目前程式碼只在開始面試、提交與 HR 更新結果時局部呼叫 `setStatus`；大部分 Badge 使用固定值，因此狀態轉移是 **Partial**。
+開始面試、提交與 HR 更新結果會更新同一瀏覽器工作階段的 Demo state；這仍是 **Partial**，不是正式後端狀態機，也不會在重新整理後保存。
 
 ## 9. 測試與 Build
 
@@ -139,11 +149,11 @@ stateDiagram-v2
 - `npm run dev`：啟動 vinext 開發伺服器。
 - `npm run lint`：執行 ESLint；Sprint 2 未新增產品程式碼。
 
-目前沒有元件單元測試、瀏覽器 E2E、視覺回歸或 API 整合測試。完整測試策略見 [TEST_PLAN](./TEST_PLAN.md)。
+目前有 domain/reducer 單元測試與 SSR smoke test；沒有 React 元件測試框架、瀏覽器 E2E、視覺回歸或 API 整合測試。完整測試策略見 [TEST_PLAN](./TEST_PLAN.md)。
 
 ## 10. 現有技術限制
 
-- `DemoApp.tsx` 同時承擔資料、流程與視圖，維護成本會隨功能增加。
+- `DemoApp.tsx` 已建立角色 flow 邊界，但技術主管題庫／組卷／審核與部分既有展示 view 仍留在同檔；後續應在有元件測試護欄後再移出。
 - 沒有 URL route 對應內部畫面，重新整理無法保留所在步驟。
 - 沒有資料庫、API、transaction、concurrency 或 durable state。
 - `chatgpt-auth.ts` 雖存在，但未被任何頁面呼叫，也不能視為現有登入。
