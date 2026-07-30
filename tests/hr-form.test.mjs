@@ -39,10 +39,10 @@ test("TC-FORM-002：Email 格式不正確時顯示明確錯誤", () => {
 
 test("面試期限必須晚於目前時間，否則顯示錯誤", () => {
   const now = Date.parse("2026-07-30T12:00:00+08:00");
-  assert.deepEqual(validateCandidateForm({ ...validForm, due: "2026-07-30T11:00" }, now), [
+  assert.deepEqual(validateCandidateForm({ ...validForm, due: "2026-07-30T11:00+08:00" }, now), [
     "面試期限必須晚於目前時間。",
   ]);
-  assert.deepEqual(validateCandidateForm({ ...validForm, due: "2026-07-30T13:00" }, now), []);
+  assert.deepEqual(validateCandidateForm({ ...validForm, due: "2026-07-30T13:00+08:00" }, now), []);
 });
 
 test("正規化候選人輸入會去除前後空白並轉小寫 Email", () => {
