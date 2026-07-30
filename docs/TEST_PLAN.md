@@ -66,7 +66,7 @@
 | Test ID | 測試目的 | 前置條件 | 操作步驟 | 預期結果 | 實際狀態 |
 |---|---|---|---|---|---|
 | TC-BUILD-001 | TypeScript 可編譯 | 完整依賴已安裝 | 執行 `npm run typecheck` | Exit code 0，無型別錯誤 | Passed：2026-07-30 已執行 |
-| TC-BUILD-002 | 首頁可 SSR | 已完成 build | 執行 `npm test` | HTTP 200、正確 title、三角色入口存在、無 starter metadata | Passed：2026-07-30；完整自動測試 23/23（含 SSR 1） |
+| TC-BUILD-002 | 首頁可 SSR | 已完成 build | 執行 `npm test` | HTTP 200、正確 title、三角色入口存在、無 starter metadata | Passed：2026-07-30；完整自動測試 14/14（含 SSR 1） |
 | TC-BUILD-003 | 正式 build 可產出 | 完整依賴已安裝 | 執行 `npm run build` | vinext build 完成且產生 server output | Passed：2026-07-30 已執行 |
 | TC-BUILD-004 | Lint 無錯誤 | 完整依賴已安裝 | 執行 `npm run lint` | Exit code 0 | Passed：2026-07-30，0 errors／0 warnings |
 
@@ -112,9 +112,7 @@
 | TC-AI-004 | 提交鎖定 | 對話 pending | lock 後新增、重試、resolve | 所有操作維持鎖定，不新增或修改訊息 | Passed（2026-07-30，自動單元測試） |
 | TC-AI-005 | Mock service | 可注入零延遲 service | 呼叫一般訊息與「模擬錯誤」 | 回傳 Mock 標示內容；錯誤可控 | Passed（2026-07-30，自動單元測試） |
 | TC-AI-006 | IME／Enter／手機 390px | 本機瀏覽器 | 中文輸入、Enter、Shift+Enter、切題、重試與提交 | 無誤送；面板可操作且不遮住主要作答 | Partial：2026-07-30 已驗證 Enter、切題隔離、錯誤／重試入口與 390×844 面板可見；IME composition、Shift+Enter 與提交後對話檢視未執行 |
-| TC-AI-007 | Server AI 契約與安全邊界 | Mock transport | 驗證 request、題目、有限歷史、錯誤與 metadata | 不跨面試／題目、不洩漏 secret、`store:false` | Passed：2026-07-30 自動測試 8 項 |
-
-> Sprint 6A 完整自動測試為 23/23 Passed。真實 Gemini API 因未安全提供新金鑰而 Not Run；Mock 測試未使用網路或 Gemini 配額。Free Tier 仍受 RPM、TPM、RPD 限制。
+| TC-HINT-002 | 提示不含完整答案 | 作答頁 | 檢查所有固定提示 | 提示只推進思路，不直接展示完整 SQL／答案 | Not Run；需內容審查 |
 
 ### 5.5 人工審核與狀態
 

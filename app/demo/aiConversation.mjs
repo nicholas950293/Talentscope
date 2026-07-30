@@ -20,7 +20,7 @@ export function reduceAIConversation(state, action) {
         questionId: action.questionId,
         createdAt: action.createdAt,
         requestId: action.requestId,
-        provider: "pending",
+        provider: "Mock",
       };
       return {
         ...state,
@@ -37,14 +37,11 @@ export function reduceAIConversation(state, action) {
         content: action.content,
         createdAt: action.createdAt,
         status: "success",
-        provider: action.provider,
-        modelVersion: action.modelVersion,
-        promptVersion: action.promptVersion,
         errorCode: undefined,
       });
     case "fail":
       return settleRequest(state, action.requestId, {
-        content: action.content || "AI 暫時無法回覆，請稍後重試。",
+        content: action.content || "Mock AI 暫時無法回覆，請稍後重試。",
         createdAt: action.createdAt,
         status: "error",
         errorCode: action.errorCode || "MOCK_AI_ERROR",

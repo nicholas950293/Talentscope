@@ -89,12 +89,8 @@ Talentscope 是一個三角色 AI 技術面試協作平台 MVP。目前版本用
 - 建立 Backend API、資料庫 schema、migration 與資料存取層。
 - 導入正式 Authentication、RBAC、面試 token 與候選人資料隔離。
 - 建立 Email 邀請、到期、撤銷與重寄流程。
-- 將 AI Service 擴充為可控、可稽核的正式能力，並持續由人類負責評分與招募決策。
+- 把 Mock AI 抽換成可控、可稽核且不直接給答案的 AI Service。
 - 將 AI 評分、人工評分、決策與 Audit Log 分開保存。
 - 拆分路由與元件，補齊狀態機、錯誤邊界與端對端測試。
-
-### Sprint 6A 現況
-
-候選人 AI 已改為呼叫 TalentScope 自有 server endpoint，預設使用不需金鑰的 Mock adapter；部署端可用 `AI_PROVIDER=gemini` 切換 Gemini 2.5 Flash。Gemini API key 僅由 server 環境讀取，Interactions request 明確使用 `store: false`。目前仍無資料庫、正式對話持久化、跨角色同步、Audit Log、AI 協作評分或自動招募決策；未設定安全的新 key，因此真實 Gemini 連線測試為 Not Run。
 
 詳情請參閱 [PDD](./PDD.md)、[ARCHITECTURE](./ARCHITECTURE.md) 與 [DATA_MODEL](./DATA_MODEL.md)。

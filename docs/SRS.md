@@ -19,7 +19,7 @@ Talentscope 以「HR 建立與追蹤、技術主管選題與審核、面試者�
 | 面試者 | 透過面試邀請驗證、閱讀說明、作答與提交的候選人角色 |
 | 面試 | 候選人、職缺、技術主管、題目、期限與狀態的集合 |
 | 題目快照 | 面試建立當下保存、後續不受原題修改影響的題目內容 |
-| AI 協作對話 | 候選人逐題自由文字對話；可切換 Mock／Gemini，最終答案由候選人負責 |
+| AI 協作對話 | 候選人逐題自由文字對話；不得直接提供完整答案，目前為 Mock |
 | AI 初評 | 對六個能力面向的輔助分數與證據，不是錄取決策 |
 | 人工審核 | 技術主管修改分數、填寫備註與技術建議的流程 |
 | 招募決策 | HR 設定通過、不通過或待討論；由人類決定 |
@@ -88,9 +88,7 @@ Talentscope 以「HR 建立與追蹤、技術主管選題與審核、面試者�
 
 | 需求編號 | 需求名稱 | 說明 | 使用角色 | 前置條件 | 主要流程 | 例外情境 | 驗收標準 | 目前狀態 |
 |---|---|---|---|---|---|---|---|---|
-| FR-AI-001 | 候選人 AI 協作對話 | 候選人可逐題自由輸入，經 server endpoint 使用 Mock 或 Gemini 協作 | 面試者 | 作答中 | 輸入、送出、查看 pending 與回覆；失敗可重試 | 空白、過長、同題 pending、provider 錯誤、切題、提交鎖定 | 訊息依面試、題目與 request 關聯；只傳有限同題上下文；提交後不可再送出 | Implemented；Gemini 真實連線 Not Run |
-
-| FR-AI-002 | Server-only Gemini | Server 依環境變數選擇 provider，Gemini 使用 Interactions API 且 `store: false` | 系統 | 合法 request | 驗證題目與有限上下文、建立 versioned prompt、呼叫 adapter、回傳統一 metadata | 缺設定、timeout、429、5xx、安全阻擋 | key 不進前端／response／log；錯誤不洩漏原始 provider 資訊 | Implemented；真實 API Not Run |
+| FR-AI-001 | 候選人 AI 協作對話 | 候選人可逐題輸入自由文字，Mock AI 協助釐清題意與思路且不提供完整答案 | 面試者 | 作答中 | 輸入、送出、查看 pending 與回覆；失敗可重試 | 空白、同題 pending、Mock 失敗、切題、提交鎖定 | 訊息依面試、題目與 request 關聯；提交後不可再送出 | Implemented UI／Mock service／記憶體 state |
 | FR-AI-002 | 對話完整性 | 延遲回覆必須寫回原題，重試不得複製 candidate message | 面試者 | 已有對話 request | 成功或錯誤 settle 原 assistant placeholder | 重複 settle、提交後回覆 | 純 reducer 測試涵蓋隔離、重試與鎖定 | Implemented |
 | FR-AI-002 | AI 初評與證據 | 針對題意理解、方法、正確性、效率、邊界、表達提供初評與證據 | 技術主管 | 面試已提交且分析完成 | 檢視六面向分數、證據與整體觀察 | 分析失敗、資料不足、模型版本缺失 | 明確標示僅供輔助，人工分數可獨立修改 | Mock：固定 evals |
 | FR-AI-003 | 禁止自動決策 | AI 不得設定通過、不通過或待討論 | HR、技術主管 | 有 AI 初評 | 人類閱讀證據後自行決定 | AI 輸出含錄取命令時應忽略並稽核 | UI 明示最終結果由面試官／HR 確認 | Implemented UI principle／正式 enforcement Planned |

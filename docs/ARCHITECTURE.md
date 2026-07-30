@@ -99,19 +99,7 @@ flowchart TD
 - 角色切換只修改前端 `role`，不是登入或授權。
 - 驗證只比對固定 Email `yian.chen@example.com` 與驗證碼 `482916`。
 - `aiConversation.mjs` 以 `interviewId`、`questionId`、`requestId` 管理逐題訊息、pending、error、retry 與提交鎖。
-- `app/api/candidate-ai/route.ts` 是前端唯一 AI endpoint；`candidateAIHandler.mjs` 驗證範圍與契約，adapter 依 `AI_PROVIDER` 選擇 Mock 或 Gemini。
-- Gemini adapter 使用官方 `@google/genai` Interactions API、`store: false`，不傳 `previous_interaction_id`、不啟用工具；API key 只存在 server environment。
-
-```mermaid
-flowchart LR
-  C["CandidateFlow"] --> E["POST /api/candidate-ai"]
-  E --> H["Validation + Prompt Builder"]
-  H --> M["Mock Adapter"]
-  H --> G["Gemini Adapter"]
-  G --> I["Gemini Interactions API · store false"]
-```
-
-上下文限制為單訊息 2,000 字、同題近期 8 則、prompt 8,000 字、輸出 800 tokens、timeout 15 秒。錯誤正規化為 `invalid_request`、`input_too_long`、`timeout`、`rate_limited`、`provider_unavailable`、`configuration_error`、`safety_blocked`、`unknown_error`。UI Retry 是唯一顯式重試，不建立無限制自動重試。
+- `mockCandidateAIService.mjs` 提供可替換的非正式 Mock provider；不呼叫外部 AI API，也不產生完整答案。
 - AI 初評與證據由 `evals` 固定資料顯示；人工評分只更新當前元件 state。
 - Email、複製與自動儲存仍只呈現 UI 或 Toast；倒數與單次提交已由前端 reducer 實作，但不具持久化或後端冪等保證。
 

@@ -81,11 +81,7 @@
 - 交付內容符合 [SRS](./SRS.md) 的狀態標記，不把 Mock 描述成正式能力。
 - 三角色入口與權限視角明確不同。
 - 九種面試狀態名稱跨 UI 與文件一致。
-- AI 可依候選人要求協助解題，但不自動評分或決定錄取／淘汰；候選人對最終答案負責。
-
-## Sprint 6A 交付
-
-新增 server-only Gemini endpoint、Mock／Gemini adapters、versioned prompt、輸入與上下文限制、統一錯誤契約及自動測試。正式金鑰設定、真實配額驗證、持久化、Audit Log、跨角色同步與 AI 協作評分不包含在本輪。
+- AI 不提供完整答案，也不自動決定錄取／淘汰。
 - README 的安裝、啟動、測試與 build 指令和 `package.json` 一致。
 - 文件路徑、表格、Mermaid 與交叉連結可讀。
 - 未執行的測試不標記 Passed。
