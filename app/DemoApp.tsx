@@ -50,10 +50,9 @@ export default function DemoApp() {
   const [role, setRole] = useState<Role>("login");
   const [view, setView] = useState<View>("dashboard");
   const [toast, setToast] = useState("");
-  const [selected, setSelected] = useState<number[]>([1, 2, 8]);
   const [status, setStatus] = useState<Status>(demoInterview.status);
   const [candidates, setCandidates] = useState(seedCandidates);
-  const [modal, setModal] = useState<"" | "candidate" | "submit" | "question" | "result">("");
+  const [modal, setModal] = useState<"" | "candidate" | "submit" | "result">("");
   const [result, setResult] = useState("待討論");
   const showToast = (text: string) => { setToast(text); window.setTimeout(() => setToast(""), 2400); };
   const enter = (r: Role) => { if (r === "candidate") setStatus("等待面試者開始"); setRole(r); setView(r === "candidate" ? "verify" : "dashboard"); };
@@ -81,12 +80,11 @@ export default function DemoApp() {
     <main className="main">
       <header className="topbar"><div className="mobile-brand"><Brand /></div><div className="crumb">Talentscope <span>/</span> {nav.find(n => n.id === view)?.label || "詳情"}</div><div className="top-actions"><button className="icon-btn">⌕</button><button className="icon-btn notification">♢</button></div></header>
       {role === "hr" && <HrFlow view={view} candidates={visibleCandidates} setModal={setModal} navigate={navigate} dashboard={<HrDashboard candidates={visibleCandidates} setModal={setModal} navigate={navigate} result={result} />} summary={<HrSummary result={result} status={status} setModal={setModal} />} />}
-      {role === "lead" && <TechLeadFlow view={view} dashboard={<LeadDashboard navigate={navigate} status={status} />} questions={<QuestionBank selected={selected} setSelected={setSelected} setModal={setModal} navigate={navigate} showToast={showToast} />} builder={<Builder selected={selected} setSelected={setSelected} navigate={navigate} showToast={showToast} />} invite={<Invite navigate={navigate} showToast={showToast} />} review={<TechReview navigate={navigate} showToast={showToast} status={status} />} />}
+      {role === "lead" && <TechLeadFlow view={view} navigate={navigate} showToast={showToast} status={status} />}
       {toast && <Toast text={toast} />}
     </main>
     {modal === "candidate" && <NewCandidateForm candidates={candidates} onClose={() => setModal("")} onSave={(c) => { setCandidates([c, ...candidates]); setModal(""); showToast("候選人與面試邀請已建立"); }} />}
     {modal === "result" && <ResultModal result={result} onClose={() => setModal("")} onSave={(v) => { setResult(v); setStatus("已完成"); setModal(""); showToast("招募結果已更新"); }} />}
-    {modal === "question" && <QuestionEditor onClose={() => setModal("")} showToast={showToast} />}
   </div>;
 }
 
@@ -149,49 +147,6 @@ export function Sprint3CandidateListSnapshot({ candidates, setModal, navigate }:
     </section></div>;
 }
 
-function LeadDashboard({ navigate, status }: { navigate: (v: View) => void; status: Status }) {
-  return <div className="page"><PageTitle eyebrow="早安，柏翰" title="今天有 3 件事等你處理" text="聚焦出題與審核，讓面試流程順利往前。" />
-    <div className="lead-stats">{[["待建立的面試", "2", "＋", "builder"], ["等待候選人作答", "4", "◷", "invite"], ["等待人工審核", "3", "✓", "review"], ["最近完成", "8", "◆", "review"]].map((s, i) => <button key={s[0]} onClick={() => navigate(s[3] as View)} className="lead-stat"><span className={`stat-icon c${i}`}>{s[2]}</span><div><small>{s[0]}</small><strong>{s[1]}</strong></div><span>→</span></button>)}</div>
-    <div className="two-col lead-layout"><section className="panel wide"><div className="panel-head"><div><h2>需要你處理</h2><p>依優先順序排列</p></div></div><div className="assignment-list">
-      <div className="assignment"><div className="avatar lg">林</div><div className="assignment-main"><div><h3>林冠宇 <Badge status="草稿" /></h3><p>Backend Engineer · HR 林佳穎指派</p></div><div className="assignment-meta"><span>期限 08/05</span><span>尚未選題</span></div></div><Button onClick={() => navigate("builder")}>開始組卷</Button></div>
-      <div className="assignment"><div className="avatar lg purple">陳</div><div className="assignment-main"><div><h3>陳怡安 <Badge status={status} /></h3><p>Junior Data Analyst · Demo 面試</p></div><div className="assignment-meta"><span>提交於昨天 16:42</span><span>3 題 · 82 分鐘</span></div></div><Button kind="secondary" onClick={() => navigate("review")}>進行審核</Button></div>
-    </div></section><section className="panel"><div className="panel-head"><div><h2>本週面試概況</h2><p>7/27 — 8/2</p></div></div><div className="mini-chart">{[42,65,35,78,52,88,60].map((h,i)=><div key={i}><span style={{height:`${h}%`}}/><small>{["一","二","三","四","五","六","日"][i]}</small></div>)}</div><div className="chart-legend"><span><i /> 已完成 8</span><span><i /> 待處理 5</span></div></section></div>
-  </div>;
-}
-
-function QuestionBank({ selected, setSelected, setModal, navigate, showToast }: { selected: number[]; setSelected: (v: number[]) => void; setModal: (m: "question") => void; navigate: (v: View) => void; showToast: (s: string) => void }) {
-  const [query, setQuery] = useState(""); const [type, setType] = useState("全部"); const [difficulty, setDifficulty] = useState("全部"); const [skill, setSkill] = useState("全部"); const [preview, setPreview] = useState<Question | null>(null);
-  const filtered = useMemo(() => questions.filter(q => (q.title + q.description + q.skills.join(" ")).toLowerCase().includes(query.toLowerCase()) && (type === "全部" || q.type === type) && (difficulty === "全部" || q.difficulty === difficulty) && (skill === "全部" || q.skills.includes(skill))), [query,type,difficulty,skill]);
-  const toggle = (id: number) => { setSelected(selected.includes(id) ? selected.filter(x => x !== id) : [...selected, id]); showToast(selected.includes(id) ? "已從面試移除" : "已加入面試"); };
-  return <div className="page"><PageTitle title="題庫" text="搜尋、篩選並組合適合這場面試的題目。" action={<div className="button-row"><Button kind="secondary" onClick={() => setModal("question")}>＋ 建立新題目</Button><Button onClick={() => navigate("builder")}>已選 {selected.length} 題 · 前往組卷</Button></div>} />
-    <section className="panel question-panel"><div className="toolbar filters"><label className="search grow"><Icon name="⌕" /><input value={query} onChange={e => setQuery(e.target.value)} placeholder="搜尋題目名稱、描述或技能標籤" /></label>
-      <select value={type} onChange={e => setType(e.target.value)}><option>全部</option><option>SQL</option><option>程式設計</option><option>技術問答</option></select>
-      <select value={difficulty} onChange={e => setDifficulty(e.target.value)}><option>全部</option><option>簡單</option><option>中等</option><option>困難</option></select>
-      <select value={skill} onChange={e => setSkill(e.target.value)}><option>全部</option><option>SQL</option><option>資料分析</option><option>統計</option><option>JavaScript</option><option>System Design</option></select></div>
-      <div className="filter-result"><span>共 {filtered.length} 題</span><button onClick={()=>{setQuery("");setType("全部");setDifficulty("全部");setSkill("全部")}}>清除篩選</button></div>
-      {filtered.length ? <div className="question-list">{filtered.map(q => <article key={q.id} className={`question-row ${selected.includes(q.id) ? "selected" : ""}`}><button className="check" onClick={() => toggle(q.id)} aria-label="選取題目">{selected.includes(q.id) ? "✓" : ""}</button><div className="q-main" onClick={() => setPreview(q)}><div className="q-title"><h3>{q.title}</h3><span className={`type type-${q.type}`}>{q.type}</span><span className={`difficulty d-${q.difficulty}`}>{q.difficulty}</span></div><p>{q.description}</p><div className="tags">{q.skills.map(s => <span key={s}>{s}</span>)}</div></div><div className="q-side"><span><Icon name="◷" /> {q.minutes} 分鐘</span><button onClick={() => setPreview(q)}>查看詳情</button><button onClick={() => setModal("question")}>編輯</button></div></article>)}</div> : <div className="empty"><Icon name="▤" /><h3>沒有符合條件的題目</h3><p>清除部分篩選條件後再試一次。</p></div>}
-    </section>{preview && <QuestionPreview q={preview} selected={selected.includes(preview.id)} onToggle={() => toggle(preview.id)} onClose={() => setPreview(null)} />}</div>;
-}
-
-function QuestionPreview({ q, selected, onToggle, onClose }: { q: Question; selected: boolean; onToggle: () => void; onClose: () => void }) {
-  return <div className="drawer-backdrop" onMouseDown={onClose}><aside className="drawer" onMouseDown={e=>e.stopPropagation()}><div className="drawer-head"><div><span className={`type type-${q.type}`}>{q.type}</span><span className={`difficulty d-${q.difficulty}`}>{q.difficulty}</span></div><button onClick={onClose}>×</button></div><h2>{q.title}</h2><div className="tags">{q.skills.map(s=><span key={s}>{s}</span>)}</div><div className="detail-block"><h4>題目描述</h4><p>{q.description}</p></div><div className="detail-block"><h4>資料結構／輸入輸出</h4><p>{q.detail}</p></div><div className="code-example">{q.example}</div><div className="detail-block"><h4>評分標準</h4><p>{q.rubric}</p></div><div className="drawer-footer"><span>預估 {q.minutes} 分鐘</span><Button onClick={onToggle} kind={selected ? "secondary" : "primary"}>{selected ? "✓ 已加入面試" : "＋ 加入面試"}</Button></div></aside></div>;
-}
-
-function Builder({ selected, setSelected, navigate, showToast }: { selected: number[]; setSelected: (v: number[]) => void; navigate: (v: View) => void; showToast: (s: string) => void }) {
-  const picked = selected.map(id => questions.find(q => q.id === id)!).filter(Boolean);
-  const move = (i:number,d:number) => { const next=[...selected]; const ni=i+d;if(ni<0||ni>=next.length)return;[next[i],next[ni]]=[next[ni],next[i]];setSelected(next); };
-  return <div className="page"><PageTitle eyebrow="林冠宇 · Backend Engineer" title="建立面試試卷" text="安排題目順序、確認作答時間，再產生面試邀請。" action={<Button kind="secondary" onClick={()=>showToast("草稿已儲存")}>儲存草稿</Button>} />
-    <div className="stepper"><div className="done"><span>✓</span>候選人資訊</div><i/><div className="active"><span>2</span>選題與排序</div><i/><div><span>3</span>預覽與邀請</div></div>
-    <div className="builder-layout"><section className="panel"><div className="panel-head"><div><h2>面試題目</h2><p>拖曳或使用箭頭調整順序</p></div><button className="text-btn" onClick={() => navigate("questions")}>＋ 從題庫加入</button></div>
-      {picked.length ? <div className="picked-list">{picked.map((q,i)=><div className="picked" key={q.id}><span className="drag">⠿</span><span className="number">{i+1}</span><div><h3>{q.title}</h3><p><span className={`type type-${q.type}`}>{q.type}</span> · {q.difficulty} · {q.minutes} 分鐘</p></div><div className="order"><button onClick={()=>move(i,-1)}>↑</button><button onClick={()=>move(i,1)}>↓</button><button onClick={()=>setSelected(selected.filter(id=>id!==q.id))}>×</button></div></div>)}</div> : <div className="empty"><Icon name="▤" /><h3>尚未加入題目</h3><p>從題庫選擇適合這場面試的題目。</p><Button onClick={() => navigate("questions")}>前往題庫</Button></div>}
-    </section><aside className="panel summary-card"><h2>面試摘要</h2><div className="candidate-summary"><div className="avatar lg">林</div><div><strong>林冠宇</strong><small>Backend Engineer</small></div></div><dl><div><dt>題目數量</dt><dd>{picked.length} 題</dd></div><div><dt>SQL／程式／問答</dt><dd>{picked.filter(q=>q.type==="SQL").length} / {picked.filter(q=>q.type==="程式設計").length} / {picked.filter(q=>q.type==="技術問答").length}</dd></div><div className="total"><dt>預估總作答時間</dt><dd>{picked.reduce((a,q)=>a+q.minutes,0)} 分鐘</dd></div></dl><div className="summary-note"><Icon name="i" />建議控制在 60–90 分鐘，為候選人保留檢查時間。</div><Button disabled={!picked.length} onClick={() => navigate("invite")}>預覽並產生邀請 →</Button></aside></div>
-  </div>;
-}
-
-function Invite({ navigate, showToast }: { navigate: (v: View) => void; showToast: (s: string) => void }) {
-  return <div className="page narrow"><button className="back" onClick={()=>navigate("builder")}>← 返回面試組卷</button><div className="success-hero"><span>✓</span><h1>面試邀請已建立</h1><p>你可以將專屬連結與驗證碼提供給候選人。</p></div><section className="panel invite-card"><div className="invite-person"><div className="avatar lg">林</div><div><h2>林冠宇</h2><p>Backend Engineer · 技術面試</p></div><Badge status="待寄送" /></div><div className="credential"><label>面試專屬連結</label><div><code>https://{demoInterview.url.replace("DA","BE")}</code><Button kind="secondary" onClick={()=>showToast("面試連結已複製")}>複製連結</Button></div></div><div className="credential split"><div><label>6 位數驗證碼</label><strong>163 820</strong><button onClick={()=>showToast("驗證碼已複製")}>複製</button></div><div><label>有效期限</label><strong>2026/08/05 18:00</strong><small>Asia/Taipei</small></div></div><div className="invite-note"><Icon name="i" /><div><strong>Demo 模式</strong><p>系統不會寄出真實 Email。展示時請直接複製邀請資訊。</p></div></div><div className="invite-actions"><Button kind="secondary" onClick={()=>navigate("dashboard")}>回到工作台</Button><Button onClick={()=>showToast("Demo 邀請已標記為寄送")}>標記為已寄送</Button></div></section></div>;
-}
-
 const evals = [
   ["題意理解", 4, "能正確拆解 cohort 與次月活躍定義，未混淆訂單月與註冊月。"],
   ["解題方法", 4, "使用 CTE 分層處理 cohort 與 retention，步驟清楚。"],
@@ -201,7 +156,7 @@ const evals = [
   ["表達與推理", 4, "註解精簡，能說明選擇此解法的原因。"],
 ];
 
-function TechReview({ navigate, showToast, status }: { navigate: (v: View) => void; showToast: (s: string) => void; status: Status }) {
+export function LegacyTechReviewSnapshot({ navigate, showToast, status }: { navigate: (v: View) => void; showToast: (s: string) => void; status: Status }) {
   const [scores,setScores]=useState(evals.map(e=>e[1] as number)); const [tab,setTab]=useState(0); const [note,setNote]=useState("SQL 基礎扎實，能清楚說明解題步驟。建議後續面談確認邊界條件敏感度。");
   return <div className="page review-page"><button className="back" onClick={()=>navigate("dashboard")}>← 返回工作台</button><PageTitle title="陳怡安的面試審核" text="Junior Data Analyst · 2026/07/28 提交" action={<Badge status={status} />} />
     <div className="ai-warning"><Icon name="i" /><strong>AI 評估僅供輔助，最終結果由面試官確認。</strong><span>請根據候選人完整作答與你的專業判斷調整分數。</span></div>
@@ -288,7 +243,7 @@ function ResultModal({ result, onClose, onSave }: { result:string; onClose:()=>v
   return <div className="modal-backdrop"><div className="modal small"><div className="modal-head"><div><h2>更新招募結果</h2><p>此決策不會由 AI 自動產生。</p></div><button onClick={onClose}>×</button></div><div className="result-options">{["通過","不通過","待討論"].map(x=><button key={x} className={value===x?"active":""} onClick={()=>setValue(x)}><span>{value===x?"●":"○"}</span><div><strong>{x}</strong><small>{x==="通過"?"建議進入下一階段":x==="不通過"?"結束本次招募流程":"需要團隊進一步討論"}</small></div></button>)}</div><div className="modal-actions"><Button kind="secondary" onClick={onClose}>取消</Button><Button onClick={()=>onSave(value)}>儲存結果</Button></div></div></div>;
 }
 
-function QuestionEditor({ onClose, showToast }: { onClose:()=>void; showToast:(s:string)=>void }) {
+export function LegacyQuestionEditorSnapshot({ onClose, showToast }: { onClose:()=>void; showToast:(s:string)=>void }) {
   const [preview,setPreview]=useState(false);
   return <div className="modal-backdrop editor-modal"><div className="modal"><div className="modal-head"><div><h2>{preview?"題目預覽":"建立新題目"}</h2><p>{preview?"以候選人視角檢查題目內容。":"建立自有題目，可先儲存為草稿。"}</p></div><button onClick={onClose}>×</button></div>{preview?<div className="editor-preview"><span className="type type-SQL">SQL</span><h2>每週活躍使用者</h2><p>計算指定月份中每週至少登入一次的使用者數量。</p><div className="schema"><strong>資料表結構</strong><code>login_events(user_id INT, login_at TIMESTAMP)</code></div></div>:<div className="question-form"><fieldset><legend>題目基本資訊</legend><div className="form-grid"><label className="full">題目名稱<input defaultValue="每週活躍使用者"/></label><label>題型<select><option>SQL</option><option>程式設計</option><option>技術問答</option></select></label><label>難度<select><option>簡單</option><option>中等</option><option>困難</option></select></label><label className="full">技能標籤<input defaultValue="SQL, Aggregation, 日期處理"/></label></div></fieldset><fieldset><legend>題目內容</legend><label>題目描述<textarea defaultValue="計算指定月份中每週至少登入一次的使用者數量。"/></label><label>資料表結構或輸入／輸出說明<textarea defaultValue="login_events(user_id INT, login_at TIMESTAMP)"/></label><label>範例<textarea defaultValue="2026-W27 | 1,240"/></label></fieldset><fieldset><legend>評分設定</legend><div className="form-grid"><label>評分標準<textarea defaultValue="日期分組 40%、去重 30%、邊界處理 30%"/></label><label>預估作答時間（分鐘）<input type="number" defaultValue="20"/></label></div></fieldset></div>}<div className="modal-actions"><Button kind="secondary" onClick={()=>{showToast("草稿已儲存");onClose()}}>儲存草稿</Button><Button onClick={()=>setPreview(!preview)}>{preview?"返回編輯":"預覽題目"}</Button></div></div></div>;
 }

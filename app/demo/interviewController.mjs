@@ -17,8 +17,10 @@ export function reduceInterviewSession(state, action) {
       return { ...state, remainingSeconds };
     }
     case "select-question":
-      return { ...state, currentQuestion: action.index };
+      if (!Number.isInteger(action.index) || action.index < 0 || action.index >= state.answers.length) return state;
+      return action.index === state.currentQuestion ? state : { ...state, currentQuestion: action.index };
     case "update-answer":
+      if (!Number.isInteger(action.index) || action.index < 0 || action.index >= state.answers.length) return state;
       return { ...state, answers: state.answers.map((answer, index) => index === action.index ? action.answer : answer) };
     case "submit":
       return { ...state, submitted: true, submissionSource: action.source };

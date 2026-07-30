@@ -1,10 +1,19 @@
-import type { ReactNode } from "react";
-import type { View } from "../demo/types";
+"use client";
 
-export function TechLeadFlow({ view, dashboard, questions, builder, invite, review }: { view: View; dashboard: ReactNode; questions: ReactNode; builder: ReactNode; invite: ReactNode; review: ReactNode }) {
-  if (view === "dashboard") return dashboard;
-  if (view === "questions") return questions;
-  if (view === "builder") return builder;
-  if (view === "invite") return invite;
-  return review;
+import { useState } from "react";
+import type { InterviewStatus, View } from "../demo/types";
+import { Builder, Invite, LeadDashboard, QuestionBank, QuestionEditor, TechReview } from "./tech/TechLeadViews";
+
+export function TechLeadFlow({ view, navigate, showToast, status }: { view: View; navigate: (view: View) => void; showToast: (text: string) => void; status: InterviewStatus }) {
+  const [selected, setSelected] = useState<number[]>([1, 2, 8]);
+  const [editorOpen, setEditorOpen] = useState(false);
+
+  return <>
+    {view === "dashboard" && <LeadDashboard navigate={navigate} status={status} />}
+    {view === "questions" && <QuestionBank selected={selected} setSelected={setSelected} openEditor={() => setEditorOpen(true)} navigate={navigate} showToast={showToast} />}
+    {view === "builder" && <Builder selected={selected} setSelected={setSelected} navigate={navigate} showToast={showToast} />}
+    {view === "invite" && <Invite navigate={navigate} showToast={showToast} />}
+    {view === "review" && <TechReview navigate={navigate} showToast={showToast} status={status} />}
+    {editorOpen && <QuestionEditor onClose={() => setEditorOpen(false)} showToast={showToast} />}
+  </>;
 }
