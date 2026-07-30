@@ -1,0 +1,87 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import { demoInterview, questions } from "../../demo/data";
+import { Badge, Button, Icon } from "../../demo/shared";
+import type { InterviewStatus, Question, View } from "../../demo/types";
+import { filterQuestionBank, getPaperSummary, moveSelectedQuestion, toggleQuestionSelection, updateReviewerScore } from "../../demo/tech/workflow.mjs";
+
+const evals = [
+  ["題意理解", 4, "能正確拆解 cohort 與次月活躍定義，未混淆訂單月與註冊月。"],
+  ["解題方法", 4, "使用 CTE 分層處理 cohort 與 retention，步驟清楚。"],
+  ["正確性", 3, "主要邏輯正確，但未完整處理無訂單月份。"],
+  ["效率與複雜度", 4, "避免逐列子查詢，聚合與 join 選擇合理。"],
+  ["邊界條件", 2, "未說明分母為零與跨年月份的處理。"],
+  ["表達與推理", 4, "註解精簡，能說明選擇此解法的原因。"],
+] as const;
+
+function PageTitle({ eyebrow, title, text, action }: { eyebrow?: string; title: string; text: string; action?: React.ReactNode }) {
+  return <div className="page-title"><div>{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h1>{title}</h1><p>{text}</p></div>{action}</div>;
+}
+
+export function LeadDashboard({ navigate, status }: { navigate: (view: View) => void; status: InterviewStatus }) {
+  return <div className="page"><PageTitle eyebrow="早安，柏翰" title="今天有 3 件事等你處理" text="聚焦出題與審核，讓面試流程順利往前。" />
+    <div className="lead-stats">{[["待建立的面試", "2", "＋", "builder"], ["等待候選人作答", "4", "◷", "invite"], ["等待人工審核", "3", "✓", "review"], ["最近完成", "8", "◆", "review"]].map((item, index) => <button key={item[0]} onClick={() => navigate(item[3] as View)} className="lead-stat"><span className={`stat-icon c${index}`}>{item[2]}</span><div><small>{item[0]}</small><strong>{item[1]}</strong></div><span>→</span></button>)}</div>
+    <div className="two-col lead-layout"><section className="panel wide"><div className="panel-head"><div><h2>需要你處理</h2><p>依優先順序排列</p></div></div><div className="assignment-list">
+      <div className="assignment"><div className="avatar lg">林</div><div className="assignment-main"><div><h3>林冠宇 <Badge status="草稿" /></h3><p>Backend Engineer · HR 林佳穎指派</p></div><div className="assignment-meta"><span>期限 08/05</span><span>尚未選題</span></div></div><Button onClick={() => navigate("builder")}>開始組卷</Button></div>
+      <div className="assignment"><div className="avatar lg purple">陳</div><div className="assignment-main"><div><h3>陳怡安 <Badge status={status} /></h3><p>Junior Data Analyst · Demo 面試</p></div><div className="assignment-meta"><span>提交於昨天 16:42</span><span>3 題 · 82 分鐘</span></div></div><Button kind="secondary" onClick={() => navigate("review")}>進行審核</Button></div>
+    </div></section><section className="panel"><div className="panel-head"><div><h2>本週面試概況</h2><p>7/27 — 8/2</p></div></div><div className="mini-chart">{[42,65,35,78,52,88,60].map((height,index)=><div key={index}><span style={{height:`${height}%`}}/><small>{["一","二","三","四","五","六","日"][index]}</small></div>)}</div><div className="chart-legend"><span><i /> 已完成 8</span><span><i /> 待處理 5</span></div></section></div>
+  </div>;
+}
+
+export function QuestionBank({ selected, setSelected, openEditor, navigate, showToast }: { selected: number[]; setSelected: (value: number[]) => void; openEditor: () => void; navigate: (view: View) => void; showToast: (text: string) => void }) {
+  const [query, setQuery] = useState("");
+  const [type, setType] = useState("全部");
+  const [difficulty, setDifficulty] = useState("全部");
+  const [skill, setSkill] = useState("全部");
+  const [preview, setPreview] = useState<Question | null>(null);
+  const filtered: Question[] = useMemo(() => filterQuestionBank(questions, { query, type, difficulty, skill }), [query, type,difficulty,skill]);
+  const toggle = (id: number) => { const included = selected.includes(id); setSelected(toggleQuestionSelection(selected, id)); showToast(included ? "已從面試移除" : "已加入面試"); };
+  return <div className="page"><PageTitle title="題庫" text="搜尋、篩選並組合適合這場面試的題目。" action={<div className="button-row"><Button kind="secondary" onClick={openEditor}>＋ 建立新題目</Button><Button onClick={() => navigate("builder")}>已選 {selected.length} 題 · 前往組卷</Button></div>} />
+    <section className="panel question-panel"><div className="toolbar filters"><label className="search grow"><Icon name="⌕" /><input value={query} onChange={event => setQuery(event.target.value)} placeholder="搜尋題目名稱、描述或技能標籤" /></label>
+      <select aria-label="依題型篩選" value={type} onChange={event => setType(event.target.value)}><option>全部</option><option>SQL</option><option>程式設計</option><option>技術問答</option></select>
+      <select aria-label="依難度篩選" value={difficulty} onChange={event => setDifficulty(event.target.value)}><option>全部</option><option>簡單</option><option>中等</option><option>困難</option></select>
+      <select aria-label="依技能篩選" value={skill} onChange={event => setSkill(event.target.value)}><option>全部</option><option>SQL</option><option>資料分析</option><option>統計</option><option>JavaScript</option><option>System Design</option></select></div>
+      <div className="filter-result"><span>共 {filtered.length} 題</span><button onClick={() => { setQuery(""); setType("全部"); setDifficulty("全部"); setSkill("全部"); }}>清除篩選</button></div>
+      {filtered.length ? <div className="question-list">{filtered.map((question: Question) => <article key={question.id} className={`question-row ${selected.includes(question.id) ? "selected" : ""}`}><button className="check" onClick={() => toggle(question.id)} aria-label="選取題目">{selected.includes(question.id) ? "✓" : ""}</button><div className="q-main" onClick={() => setPreview(question)}><div className="q-title"><h3>{question.title}</h3><span className={`type type-${question.type}`}>{question.type}</span><span className={`difficulty d-${question.difficulty}`}>{question.difficulty}</span></div><p>{question.description}</p><div className="tags">{question.skills.map((item: string) => <span key={item}>{item}</span>)}</div></div><div className="q-side"><span><Icon name="◷" /> {question.minutes} 分鐘</span><button onClick={() => setPreview(question)}>查看詳情</button><button onClick={openEditor}>編輯</button></div></article>)}</div> : <div className="empty"><Icon name="▤" /><h3>沒有符合條件的題目</h3><p>清除部分篩選條件後再試一次。</p></div>}
+    </section>{preview && <QuestionPreview question={preview} selected={selected.includes(preview.id)} onToggle={() => toggle(preview.id)} onClose={() => setPreview(null)} />}</div>;
+}
+
+function QuestionPreview({ question, selected, onToggle, onClose }: { question: Question; selected: boolean; onToggle: () => void; onClose: () => void }) {
+  return <div className="drawer-backdrop" onMouseDown={onClose}><aside className="drawer" onMouseDown={event => event.stopPropagation()}><div className="drawer-head"><div><span className={`type type-${question.type}`}>{question.type}</span><span className={`difficulty d-${question.difficulty}`}>{question.difficulty}</span></div><button onClick={onClose}>×</button></div><h2>{question.title}</h2><div className="tags">{question.skills.map(skill => <span key={skill}>{skill}</span>)}</div><div className="detail-block"><h4>題目描述</h4><p>{question.description}</p></div><div className="detail-block"><h4>資料結構／輸入輸出</h4><p>{question.detail}</p></div><div className="code-example">{question.example}</div><div className="detail-block"><h4>評分標準</h4><p>{question.rubric}</p></div><div className="drawer-footer"><span>預估 {question.minutes} 分鐘</span><Button onClick={onToggle} kind={selected ? "secondary" : "primary"}>{selected ? "✓ 已加入面試" : "＋ 加入面試"}</Button></div></aside></div>;
+}
+
+export function Builder({ selected, setSelected, navigate, showToast }: { selected: number[]; setSelected: (value: number[]) => void; navigate: (view: View) => void; showToast: (text: string) => void }) {
+  const summary = getPaperSummary(questions, selected);
+  return <div className="page"><PageTitle eyebrow="林冠宇 · Backend Engineer" title="建立面試試卷" text="安排題目順序、確認作答時間，再產生面試邀請。" action={<Button kind="secondary" onClick={() => showToast("草稿已儲存")}>儲存草稿</Button>} />
+    <div className="stepper"><div className="done"><span>✓</span>候選人資訊</div><i/><div className="active"><span>2</span>選題與排序</div><i/><div><span>3</span>預覽與邀請</div></div>
+    <div className="builder-layout"><section className="panel"><div className="panel-head"><div><h2>面試題目</h2><p>拖曳或使用箭頭調整順序</p></div><button className="text-btn" onClick={() => navigate("questions")}>＋ 從題庫加入</button></div>
+      {summary.count ? <div className="picked-list">{summary.selected.map((question: Question,index: number)=><div className="picked" key={question.id}><span className="drag">⠿</span><span className="number">{index+1}</span><div><h3>{question.title}</h3><p><span className={`type type-${question.type}`}>{question.type}</span> · {question.difficulty} · {question.minutes} 分鐘</p></div><div className="order"><button onClick={() => setSelected(moveSelectedQuestion(selected,index,-1))}>↑</button><button onClick={() => setSelected(moveSelectedQuestion(selected,index,1))}>↓</button><button onClick={() => setSelected(toggleQuestionSelection(selected,question.id))}>×</button></div></div>)}</div> : <div className="empty"><Icon name="▤" /><h3>尚未加入題目</h3><p>從題庫選擇適合這場面試的題目。</p><Button onClick={() => navigate("questions")}>前往題庫</Button></div>}
+    </section><aside className="panel summary-card"><h2>面試摘要</h2><div className="candidate-summary"><div className="avatar lg">林</div><div><strong>林冠宇</strong><small>Backend Engineer</small></div></div><dl><div><dt>題目數量</dt><dd>{summary.count} 題</dd></div><div><dt>SQL／程式／問答</dt><dd>{summary.typeCounts.SQL} / {summary.typeCounts.程式設計} / {summary.typeCounts.技術問答}</dd></div><div className="total"><dt>預估總作答時間</dt><dd>{summary.totalMinutes} 分鐘</dd></div></dl><div className="summary-note"><Icon name="i" />建議控制在 60–90 分鐘，為候選人保留檢查時間。</div><Button disabled={!summary.canCreateInvite} onClick={() => navigate("invite")}>預覽並產生邀請 →</Button></aside></div>
+  </div>;
+}
+
+export function Invite({ navigate, showToast }: { navigate: (view: View) => void; showToast: (text: string) => void }) {
+  return <div className="page narrow"><button className="back" onClick={() => navigate("builder")}>← 返回面試組卷</button><div className="success-hero"><span>✓</span><h1>面試邀請已建立</h1><p>你可以將專屬連結與驗證碼提供給候選人。</p></div><section className="panel invite-card"><div className="invite-person"><div className="avatar lg">林</div><div><h2>林冠宇</h2><p>Backend Engineer · 技術面試</p></div><Badge status="待寄送" /></div><div className="credential"><label>面試專屬連結</label><div><code>https://{demoInterview.url.replace("DA","BE")}</code><Button kind="secondary" onClick={() => showToast("面試連結已複製")}>複製連結</Button></div></div><div className="credential split"><div><label>6 位數驗證碼</label><strong>163 820</strong><button onClick={() => showToast("驗證碼已複製")}>複製</button></div><div><label>有效期限</label><strong>2026/08/05 18:00</strong><small>Asia/Taipei</small></div></div><div className="invite-note"><Icon name="i" /><div><strong>Demo 模式</strong><p>系統不會寄出真實 Email。展示時請直接複製邀請資訊。</p></div></div><div className="invite-actions"><Button kind="secondary" onClick={() => navigate("dashboard")}>回到工作台</Button><Button onClick={() => showToast("Demo 邀請已標記為寄送")}>標記為已寄送</Button></div></section></div>;
+}
+
+export function TechReview({ navigate, showToast, status }: { navigate: (view: View) => void; showToast: (text: string) => void; status: InterviewStatus }) {
+  const [scores,setScores]=useState(evals.map(item => item[1]));
+  const [tab,setTab]=useState(0);
+  const [note,setNote]=useState("SQL 基礎扎實，能清楚說明解題步驟。建議後續面談確認邊界條件敏感度。");
+  const reviewQuestions = [questions[0], questions[1], questions[7]];
+  return <div className="page review-page"><button className="back" onClick={() => navigate("dashboard")}>← 返回工作台</button><PageTitle title="陳怡安的面試審核" text="Junior Data Analyst · 2026/07/28 提交" action={<Badge status={status} />} />
+    <div className="ai-warning"><Icon name="i" /><strong>AI 評估僅供輔助，最終結果由面試官確認。</strong><span>請根據候選人完整作答與你的專業判斷調整分數。</span></div>
+    <div className="review-layout"><div><section className="panel candidate-info"><div className="person"><span>陳</span><div><strong>陳怡安</strong><small>yian.chen@example.com</small></div></div><dl><div><dt>作答時間</dt><dd>82 分 14 秒</dd></div><div><dt>完成題數</dt><dd>3 / 3</dd></div><div><dt>AI 對話</dt><dd>4 則</dd></div><div><dt>提交時間</dt><dd>07/28 16:42</dd></div></dl></section>
+      <section className="panel answer-panel"><div className="question-tabs">{["Q1 連續活躍用戶","Q2 電商月留存率","Q3 資料品質異常"].map((title,index)=><button key={title} className={tab===index?"active":""} onClick={() => setTab(index)}>{title}<span>{index===2?"問答":"SQL"} · {[24,31,27][index]} 分</span></button>)}</div><div className="answer-content"><div className="answer-head"><div><span>第 {tab+1} 題</span><h2>{reviewQuestions[tab].title}</h2></div><span className="time-chip">停留 {[24,31,27][tab]}:0{tab+2}</span></div><p>{reviewQuestions[tab].description}</p>
+      {tab<2?<pre className="answer-code"><code>{tab===0?`WITH daily AS (\n  SELECT DISTINCT user_id, DATE(login_at) AS dt\n  FROM login_events\n), grouped AS (\n  SELECT *, dt - ROW_NUMBER() OVER (\n    PARTITION BY user_id ORDER BY dt\n  ) * INTERVAL '1 day' AS grp\n  FROM daily\n)\nSELECT user_id, MIN(dt), MAX(dt)\nFROM grouped\nGROUP BY user_id, grp\nHAVING COUNT(*) >= 3;`:`WITH cohorts AS (\n  SELECT id, DATE_TRUNC('month', created_at) cohort\n  FROM users\n), active AS (\n  SELECT DISTINCT user_id, DATE_TRUNC('month', created_at) active_month\n  FROM orders\n)\nSELECT cohort, COUNT(active.user_id)::float / COUNT(cohorts.id)\nFROM cohorts LEFT JOIN active ON ...\nGROUP BY cohort;`}</code></pre>:<div className="text-answer">我會先確認這 35% 是真實業務變化還是資料問題。第一步比較來源系統的訂單筆數與金額，再依日期、渠道、商品拆解差異；同時確認退貨、取消與幣別轉換規則是否改變。若確認是異常，我會先在儀表板標示資料調查中，通知使用者暫緩決策，接著定位 ETL 或上游事件的變更並補算歷史資料。最後補上品質檢查與異常告警。</div>}
+      <div className="hint-log"><h3>AI 對話紀錄 <small>Mock 展示資料</small></h3>{tab===0?<div className="empty-inline">本題沒有 AI 對話</div>:<div className="review-conversation"><div className="hint-item"><span>候選人</span><div><p>{tab===1?"我想先定義 cohort，但不確定月份應該如何對齊。":"我已檢查筆數，還有哪些資料品質條件容易漏掉？"}</p><small>15:{tab===1?"24":"51"} · 第 {tab+1} 題</small></div></div><div className="hint-item"><span>Mock AI</span><div><p>{tab===1?"先分開定義註冊 cohort 與後續活躍月份，再說明兩者的對齊規則。":"也可以檢查幣別、取消與退款狀態，並說明這些條件如何影響結論。"}</p><small>15:{tab===1?"25":"52"} · 第 {tab+1} 題</small></div></div></div>}</div></div></section></div>
+      <aside><section className="panel ai-score"><div className="panel-head"><div><h2>AI 初步分析</h2><p>基於作答內容與過程紀錄</p></div><span className="ai-tag">Mock AI</span></div><div className="strength"><strong>整體觀察</strong><p>候選人具備良好的 SQL 拆解能力與清楚表達，主要疑點在邊界條件與資料完整性考量。</p></div>{evals.map((item,index)=><div className="eval" key={item[0]}><div className="eval-head"><strong>{item[0]}</strong><span>AI {item[1]}/5</span></div><p>{item[2]}</p><div className="score-control"><label>人工評分</label><div>{[1,2,3,4,5].map(score=><button key={score} className={scores[index]===score?"active":""} onClick={() => setScores(updateReviewerScore(scores,index,score))}>{score}</button>)}</div></div></div>)}</section>
+      <section className="panel reviewer-note"><h2>面試官備註</h2><textarea value={note} onChange={event => setNote(event.target.value)} /><div className="decision"><label>技術建議</label><select><option>建議進入下一階段</option><option>需要進一步討論</option><option>不建議進入下一階段</option></select></div><Button onClick={() => showToast("人工審核已儲存，HR 可查看摘要")}>確認並完成審核</Button></section></aside></div>
+  </div>;
+}
+
+export function QuestionEditor({ onClose, showToast }: { onClose: () => void; showToast: (text: string) => void }) {
+  const [preview,setPreview]=useState(false);
+  return <div className="modal-backdrop editor-modal"><div className="modal"><div className="modal-head"><div><h2>{preview?"題目預覽":"建立新題目"}</h2><p>{preview?"以候選人視角檢查題目內容。":"建立自有題目，可先儲存為草稿。"}</p></div><button onClick={onClose}>×</button></div>{preview?<div className="editor-preview"><span className="type type-SQL">SQL</span><h2>每週活躍使用者</h2><p>計算指定月份中每週至少登入一次的使用者數量。</p><div className="schema"><strong>資料表結構</strong><code>login_events(user_id INT, login_at TIMESTAMP)</code></div></div>:<div className="question-form"><fieldset><legend>題目基本資訊</legend><div className="form-grid"><label className="full">題目名稱<input defaultValue="每週活躍使用者"/></label><label>題型<select><option>SQL</option><option>程式設計</option><option>技術問答</option></select></label><label>難度<select><option>簡單</option><option>中等</option><option>困難</option></select></label><label className="full">技能標籤<input defaultValue="SQL, Aggregation, 日期處理"/></label></div></fieldset><fieldset><legend>題目內容</legend><label>題目描述<textarea defaultValue="計算指定月份中每週至少登入一次的使用者數量。"/></label><label>資料表結構或輸入／輸出說明<textarea defaultValue="login_events(user_id INT, login_at TIMESTAMP)"/></label><label>範例<textarea defaultValue="2026-W27 | 1,240"/></label></fieldset><fieldset><legend>評分設定</legend><div className="form-grid"><label>評分標準<textarea defaultValue="日期分組 40%、去重 30%、邊界處理 30%"/></label><label>預估作答時間（分鐘）<input type="number" defaultValue="20"/></label></div></fieldset></div>}<div className="modal-actions"><Button kind="secondary" onClick={() => { showToast("草稿已儲存"); onClose(); }}>儲存草稿</Button><Button onClick={() => setPreview(!preview)}>{preview?"返回編輯":"預覽題目"}</Button></div></div></div>;
+}
