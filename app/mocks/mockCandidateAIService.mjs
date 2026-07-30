@@ -1,3 +1,4 @@
+// In-memory Mock provider; it never calls an external AI service.
 const DEFAULT_REPLIES = [
   "Mock AI：先說說你目前的理解，以及卡住的是條件、資料關係，還是解法取捨？我會依你的思路一起釐清。",
   "Mock AI：可以把問題拆成輸入、預期輸出與限制三部分，再檢查每一步是否都能由題目條件支持。",

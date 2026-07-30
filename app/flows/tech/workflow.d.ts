@@ -1,4 +1,4 @@
-import type { Question } from "../types";
+import type { Question } from "../../domain/types";
 
 export type QuestionFilters = { query?: string; type?: string; difficulty?: string; skill?: string };
 export type PaperSummary = { selected: Question[]; count: number; totalMinutes: number; typeCounts: { SQL: number; 程式設計: number; 技術問答: number }; canCreateInvite: boolean };

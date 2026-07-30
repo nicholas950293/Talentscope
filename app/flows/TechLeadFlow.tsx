@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import type { InterviewStatus, View } from "../demo/types";
+import type { InterviewStatus, View } from "../domain/types";
 import { Builder, Invite, LeadDashboard, QuestionBank, QuestionEditor, TechReview } from "./tech/TechLeadViews";
 
 export function TechLeadFlow({ view, navigate, showToast, status }: { view: View; navigate: (view: View) => void; showToast: (text: string) => void; status: InterviewStatus }) {

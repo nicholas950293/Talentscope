@@ -1,4 +1,4 @@
-import { INTERVIEW_STATUSES } from "../demoLogic.mjs";
+import { INTERVIEW_STATUSES } from "./interviewWorkflow.mjs";
 
 export type Role = "login" | "hr" | "lead" | "candidate";
 export type View = "dashboard" | "candidates" | "questions" | "builder" | "review" | "invite" | "verify" | "brief" | "exam" | "done";

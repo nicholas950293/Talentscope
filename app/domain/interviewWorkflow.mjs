@@ -1,3 +1,4 @@
+// Shared domain rules for interview status, filtering, progress, and submission.
 export const INTERVIEW_STATUSES = [
   "草稿",
   "待寄送",

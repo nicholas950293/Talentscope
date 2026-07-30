@@ -12,7 +12,7 @@ async function render() {
   );
 }
 
-test("server-renders the Talentscope demo entry", async () => {
+test("server-renders the Talentscope application entry", async () => {
   const response = await render();
   assert.equal(response.status, 200);
   assert.match(response.headers.get("content-type") ?? "", /^text\/html\b/i);

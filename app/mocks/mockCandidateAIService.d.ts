@@ -1,3 +1,4 @@
+// Types for the in-memory Mock candidate assistant.
 export type CandidateAIRequest = {
   interviewId: string;
   questionId: number;

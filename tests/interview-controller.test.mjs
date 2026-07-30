@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { createInterviewSession, reduceInterviewSession } from "../app/demo/interviewController.mjs";
+import { createInterviewSession, reduceInterviewSession } from "../app/interview/interviewController.mjs";
 
 test("倒數正確遞減且永遠不小於零", () => {
   const initial = createInterviewSession(3, 2);

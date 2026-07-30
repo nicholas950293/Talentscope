@@ -1,10 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { demoInterview, questions } from "../../demo/data";
-import { Badge, Button, Icon } from "../../demo/shared";
-import type { InterviewStatus, Question, View } from "../../demo/types";
-import { filterQuestionBank, getPaperSummary, moveSelectedQuestion, toggleQuestionSelection, updateReviewerScore } from "../../demo/tech/workflow.mjs";
+import type { InterviewStatus, Question, View } from "../../domain/types";
+import { demoInterview, questions } from "../../mocks/data";
+import { Badge, Button, Icon, PageTitle } from "../../shared/ui";
+import { filterQuestionBank, getPaperSummary, moveSelectedQuestion, toggleQuestionSelection, updateReviewerScore } from "./workflow.mjs";
 
 const evals = [
   ["題意理解", 4, "能正確拆解 cohort 與次月活躍定義，未混淆訂單月與註冊月。"],
@@ -14,10 +14,6 @@ const evals = [
   ["邊界條件", 2, "未說明分母為零與跨年月份的處理。"],
   ["表達與推理", 4, "註解精簡，能說明選擇此解法的原因。"],
 ] as const;
-
-function PageTitle({ eyebrow, title, text, action }: { eyebrow?: string; title: string; text: string; action?: React.ReactNode }) {
-  return <div className="page-title"><div>{eyebrow && <div className="eyebrow">{eyebrow}</div>}<h1>{title}</h1><p>{text}</p></div>{action}</div>;
-}
 
 export function LeadDashboard({ navigate, status }: { navigate: (view: View) => void; status: InterviewStatus }) {
   return <div className="page"><PageTitle eyebrow="早安，柏翰" title="今天有 3 件事等你處理" text="聚焦出題與審核，讓面試流程順利往前。" />

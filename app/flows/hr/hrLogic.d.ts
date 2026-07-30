@@ -1,4 +1,4 @@
-import type { Candidate, RecruitmentDecision, RecruitmentResult } from "../../demo/types";
+import type { Candidate, RecruitmentDecision, RecruitmentResult } from "../../domain/types";
 
 export const RECRUITMENT_RESULTS: readonly RecruitmentResult[];
 

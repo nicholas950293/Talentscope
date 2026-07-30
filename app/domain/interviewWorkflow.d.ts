@@ -1,3 +1,4 @@
+// Type declarations for shared interview domain rules.
 export const INTERVIEW_STATUSES: readonly ["草稿", "待寄送", "等待面試者開始", "作答中", "已提交", "AI 分析中", "等待人工審核", "已完成", "已過期"];
 export type InterviewStatus = typeof INTERVIEW_STATUSES[number];
 export const INTERVIEW_TRANSITIONS: Record<string, string[]>;

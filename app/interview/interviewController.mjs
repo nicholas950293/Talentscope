@@ -1,3 +1,4 @@
+// Pure in-memory interview session reducer used by the candidate flow.
 export function createInterviewSession(questionCount, durationSeconds = 75 * 60) {
   return {
     answers: Array.from({ length: questionCount }, () => ""),
