@@ -8,6 +8,7 @@ import { createInterviewSession, reduceInterviewSession } from "../demo/intervie
 import { createMockCandidateAIService } from "../demo/mockCandidateAIService.mjs";
 import { Badge, Brand, Button, Icon } from "../demo/shared";
 import type { AIConversationAction, AIConversationMessage, AIConversationState, InterviewStatus, View } from "../demo/types";
+import { shouldSendAIMessageFromKeyboard, validateCandidateCredentials } from "./candidate/candidateWorkflow.mjs";
 
 type Props = {
   view: View;
@@ -51,11 +52,10 @@ export function CandidateFlow({ view, navigate, modal, setModal, status, setStat
 
   const verify = (event: React.FormEvent) => {
     event.preventDefault();
-    if (email.toLowerCase() === demoInterview.email && code === demoInterview.code) {
-      setError("");
+    const result = validateCandidateCredentials({ email, code }, demoInterview);
+    setError(result.error);
+    if (result.valid) {
       navigate("brief");
-    } else {
-      setError("Email 或驗證碼不正確，請確認後再試一次。");
     }
   };
 
@@ -108,7 +108,7 @@ export function CandidateFlow({ view, navigate, modal, setModal, status, setStat
     <div className="exam-body">
       <aside className="q-nav"><h3>題目導覽</h3>{examQuestions.map((question, index) => <button key={question.id} className={session.currentQuestion === index ? "active" : ""} onClick={() => dispatch({ type: "select-question", index })}><span>{session.answers[index].trim() ? "✓" : index + 1}</span><div><strong>{question.title}</strong><small>{question.type} · {question.minutes} 分鐘</small></div></button>)}<div className="nav-legend"><span><i className="answered" />已作答</span><span><i />未作答</span></div></aside>
       <section className="workspace"><div className="question-content"><div className="q-kicker"><span>第 {session.currentQuestion + 1} 題，共 3 題</span><span className={`type type-${currentQuestion.type}`}>{currentQuestion.type}</span><span className={`difficulty d-${currentQuestion.difficulty}`}>{currentQuestion.difficulty}</span></div><h1>{currentQuestion.title}</h1><p>{currentQuestion.description}</p><div className="schema"><strong>{currentQuestion.type === "技術問答" ? "回答方向" : "資料表結構／輸入輸出"}</strong><code>{currentQuestion.detail}</code></div><div className="example"><strong>範例</strong><p>{currentQuestion.example}</p></div></div><div className="editor"><div className="editor-bar"><span>{currentQuestion.type === "SQL" ? "SQL" : "文字作答"}</span><span>工作階段已更新 ✓</span></div><textarea disabled={session.submitted} spellCheck={false} value={session.answers[session.currentQuestion]} onChange={event => dispatch({ type: "update-answer", index: session.currentQuestion, answer: event.target.value })} placeholder={currentQuestion.type === "技術問答" ? "請輸入你的分析、判斷與理由…" : "-- 在這裡輸入你的答案\nSELECT ..."} /></div><div className="exam-nav"><Button kind="secondary" disabled={session.currentQuestion === 0 || session.submitted} onClick={() => dispatch({ type: "select-question", index: session.currentQuestion - 1 })}>← 上一題</Button><span>第 {session.currentQuestion + 1} / 3 題</span><Button disabled={session.currentQuestion === 2 || session.submitted} onClick={() => dispatch({ type: "select-question", index: session.currentQuestion + 1 })}>下一題 →</Button></div></section>
-      <aside className="ai-panel" aria-label="AI 協作對話"><div className="ai-title"><span>✦</span><div><h3>AI 協作</h3><p>Mock AI · 釐清題意與思路</p></div></div><div className="ai-boundary"><Icon name="i" />AI 不提供完整答案；每題對話獨立保存，並會提供面試官參考。</div><div className="ai-messages" aria-live="polite">{currentMessages.length === 0 && <div className="ai-empty"><strong>從你的思路開始</strong><p>描述你對題目的理解、目前做法或卡住的地方。</p></div>}{currentMessages.map((message: AIConversationMessage) => <div key={message.id} className={`ai-message ${message.role} ${message.status}`}><small>{message.role === "candidate" ? "你" : "Mock AI"}</small>{message.status === "pending" ? <p className="ai-thinking"><i /><i /><i /> 正在整理回覆</p> : <p>{message.content}</p>}{message.status === "error" && <button disabled={session.submitted || aiPending} onClick={() => retryAIMessage(message)}>重試這則回覆</button>}</div>)}</div><div className="ai-composer"><textarea value={aiInput} disabled={session.submitted || aiPending} onChange={event => setAIInput(event.target.value)} onKeyDown={event => { if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); sendAIMessage(); } }} placeholder={session.submitted ? "面試已提交，無法繼續對話" : aiPending ? "Mock AI 回覆中…" : "輸入你的問題或目前思路…"} /><div><small>Enter 傳送 · Shift + Enter 換行</small><Button disabled={!canSend} onClick={sendAIMessage}>{aiPending ? "回覆中…" : "傳送"}</Button></div></div></aside>
+      <aside className="ai-panel" aria-label="AI 協作對話"><div className="ai-title"><span>✦</span><div><h3>AI 協作</h3><p>Mock AI · 釐清題意與思路</p></div></div><div className="ai-boundary"><Icon name="i" />AI 不提供完整答案；每題對話獨立保存，並會提供面試官參考。</div><div className="ai-messages" aria-live="polite">{currentMessages.length === 0 && <div className="ai-empty"><strong>從你的思路開始</strong><p>描述你對題目的理解、目前做法或卡住的地方。</p></div>}{currentMessages.map((message: AIConversationMessage) => <div key={message.id} className={`ai-message ${message.role} ${message.status}`}><small>{message.role === "candidate" ? "你" : "Mock AI"}</small>{message.status === "pending" ? <p className="ai-thinking"><i /><i /><i /> 正在整理回覆</p> : <p>{message.content}</p>}{message.status === "error" && <button disabled={session.submitted || aiPending} onClick={() => retryAIMessage(message)}>重試這則回覆</button>}</div>)}</div><div className="ai-composer"><textarea value={aiInput} disabled={session.submitted || aiPending} onChange={event => setAIInput(event.target.value)} onKeyDown={event => { if (shouldSendAIMessageFromKeyboard({ key: event.key, shiftKey: event.shiftKey, isComposing: event.nativeEvent.isComposing })) { event.preventDefault(); sendAIMessage(); } }} placeholder={session.submitted ? "面試已提交，無法繼續對話" : aiPending ? "Mock AI 回覆中…" : "輸入你的問題或目前思路…"} /><div><small>Enter 傳送 · Shift + Enter 換行</small><Button disabled={!canSend} onClick={sendAIMessage}>{aiPending ? "回覆中…" : "傳送"}</Button></div></div></aside>
     </div>
     {modal === "submit" && <SubmitConfirmation progress={progress} submitting={session.submitted} onClose={() => setModal("")} onSubmit={() => { setModal(""); dispatch({ type: "submit", source: "manual" }); }} />}
   </main>;

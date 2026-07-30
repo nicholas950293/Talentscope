@@ -15,3 +15,5 @@ export function createMockCandidateAIService(options?: {
   latencyMs?: number;
   shouldFail?: (input: CandidateAIRequest) => boolean;
 }): CandidateAIService;
+
+export function isMockGuidanceSafe(content: string): boolean;
