@@ -4,7 +4,7 @@
 
 ## 1. 測試目標與範圍
 
-驗證目前三角色 MVP 的畫面可用性、角色導覽、題庫與組卷、驗證與作答、AI 提示紀錄、人工審核、狀態一致性、基本 RWD 與無障礙風險。
+驗證目前三角色 MVP 的畫面可用性、角色導覽、題庫與組卷、驗證與作答、AI 協作對話、人工審核、狀態一致性、基本 RWD 與無障礙風險。
 
 包含：
 
@@ -43,7 +43,7 @@
 - 題庫關鍵字與多條件 filter。
 - 題目加入、移除、排序與總時間計算。
 - 九種狀態合法值與 Badge mapping。
-- Demo 驗證函式、提示紀錄 shape、結果選擇。
+- Demo 驗證函式、AI 對話 reducer 與 Mock service、結果選擇。
 - 未來正式狀態機的合法／非法轉移。
 
 目前已有 `tests/demo-logic.test.mjs` 與 `tests/interview-controller.test.mjs`。2026-07-30 執行 8/8 domain/reducer 測試 Passed，涵蓋候選人複合篩選、完成度、合法狀態、倒數不小於零、切題／更新答案不重置、歸零單次提交、手動提交後拒絕逾時與提交後鎖定。元件測試仍為 Planned。
@@ -66,9 +66,9 @@
 | Test ID | 測試目的 | 前置條件 | 操作步驟 | 預期結果 | 實際狀態 |
 |---|---|---|---|---|---|
 | TC-BUILD-001 | TypeScript 可編譯 | 完整依賴已安裝 | 執行 `npm run typecheck` | Exit code 0，無型別錯誤 | Passed：2026-07-30 已執行 |
-| TC-BUILD-002 | 首頁可 SSR | 已完成 build | 執行 `npm test` | HTTP 200、正確 title、三角色入口存在、無 starter metadata | Passed：2026-07-30；完整自動測試 9/9（含 SSR 1） |
+| TC-BUILD-002 | 首頁可 SSR | 已完成 build | 執行 `npm test` | HTTP 200、正確 title、三角色入口存在、無 starter metadata | Passed：2026-07-30；完整自動測試 14/14（含 SSR 1） |
 | TC-BUILD-003 | 正式 build 可產出 | 完整依賴已安裝 | 執行 `npm run build` | vinext build 完成且產生 server output | Passed：2026-07-30 已執行 |
-| TC-BUILD-004 | Lint 無錯誤 | 完整依賴已安裝 | 執行 `npm run lint` | Exit code 0 | Passed with warnings：2026-07-30，0 errors／3 個未使用 legacy view warnings |
+| TC-BUILD-004 | Lint 無錯誤 | 完整依賴已安裝 | 執行 `npm run lint` | Exit code 0 | Passed：2026-07-30，0 errors／0 warnings |
 
 ### 5.2 三角色 Happy Path 與導覽
 
@@ -95,7 +95,7 @@
 | TC-BUILDER-002 | 組卷估時 | 已選多題 | 加入／移除題目 | 題數、類型統計與總分鐘正確更新 | Not Run |
 | TC-BUILDER-003 | 空試卷保護 | 移除所有題目 | 觀察下一步按鈕 | 前往邀請按鈕停用且顯示 Empty State | Not Run |
 
-### 5.4 面試驗證、作答與 AI 提示
+### 5.4 面試驗證、作答與 AI 協作
 
 | Test ID | 測試目的 | 前置條件 | 操作步驟 | 預期結果 | 實際狀態 |
 |---|---|---|---|---|---|
@@ -106,14 +106,21 @@
 | TC-ANSWER-003 | 未作答提示 | 至少一題為空 | 開啟提交 Modal | 顯示完成／未完成數量、未作答題號與題名 | Passed：2026-07-29 人工確認列出第 2、3 題 |
 | TC-TIMER-001 | 75 分鐘倒數 | 已開始面試 | 觀察時間後輸入答案並切題 | 從 01:15:00 遞減且不因互動重置 | Passed：2026-07-30 人工觀察 `01:14:59` 後切題持續遞減 |
 | TC-TIMER-002 | 逾時單次提交 | 倒數歸零 | 以 reducer 觸發逾時並與重複提交競態 | 只採用第一次提交，後續 tick／提交／答案修改不改變 state | Passed：2026-07-30 reducer 測試；瀏覽器 75 分鐘 E2E 未執行 |
-| TC-HINT-001 | 四級提示紀錄 | 作答頁 | 依序點四級提示 | 每次記錄目前題號、等級、時間與內容 | Not Run |
+| TC-AI-001 | 空白與 pending 防重 | AI 對話初始 state | 傳空白、送出後同題再送 | 空白不建立訊息；pending 不重複送出 | Passed（2026-07-30，自動單元測試） |
+| TC-AI-002 | 逐題隔離與延遲回覆 | 兩題皆有 request | 第二題 pending 時 settle 第一題 | 回覆仍位於第一題 | Passed（2026-07-30，自動單元測試） |
+| TC-AI-003 | 錯誤與重試 | assistant 為 error | 執行 retry 後 resolve | 不複製 candidate message，原 placeholder 更新成功 | Passed（2026-07-30，自動單元測試） |
+| TC-AI-004 | 提交鎖定 | 對話 pending | lock 後新增、重試、resolve | 所有操作維持鎖定，不新增或修改訊息 | Passed（2026-07-30，自動單元測試） |
+| TC-AI-005 | Mock service | 可注入零延遲 service | 呼叫一般訊息與「模擬錯誤」 | 回傳 Mock 標示內容；錯誤可控 | Passed（2026-07-30，自動單元測試） |
+| TC-AI-006 | IME／Enter／手機 390px | 本機瀏覽器 | 中文輸入、Enter、Shift+Enter、切題、重試與提交 | 無誤送；面板可操作且不遮住主要作答 | Partial：2026-07-30 已驗證 Enter、切題隔離、錯誤／重試入口與 390×844 面板可見；IME composition、Shift+Enter 與提交後對話檢視未執行 |
 | TC-HINT-002 | 提示不含完整答案 | 作答頁 | 檢查所有固定提示 | 提示只推進思路，不直接展示完整 SQL／答案 | Not Run；需內容審查 |
 
 ### 5.5 人工審核與狀態
 
 | Test ID | 測試目的 | 前置條件 | 操作步驟 | 預期結果 | 實際狀態 |
 |---|---|---|---|---|---|
-| TC-REVIEW-001 | 切換逐題作答 | 技術審核頁 | 切換三個題目分頁 | 題目、答案、停留時間與提示紀錄對應更新 | Not Run |
+| TC-REVIEW-001 | 切換逐題作答 | 技術審核頁 | 切換三個題目分頁 | 題目、答案、停留時間與 Mock AI 對話紀錄對應更新 | Not Run |
+
+> Sprint 5 自動結果只代表純邏輯測試；瀏覽器人工項目需在完成實際操作後才可改為 Passed。正式 AI、後端持久化、跨角色同步與內容安全不在本 Sprint 測試範圍。
 | TC-REVIEW-002 | AI 與人工分數分離 | 技術審核頁 | 修改六面向人工分數 | AI 分數／證據不變，人工分數獨立更新 | Not Run |
 | TC-REVIEW-003 | 備註與技術建議 | 技術審核頁 | 修改備註與建議後完成 | 顯示成功回饋；不得宣稱已持久化 | Not Run |
 | TC-DECISION-001 | HR 人工決策 | HR 摘要頁 | 選擇通過並儲存 | 結果由 HR 操作、狀態變成已完成，AI 不自動變更 | Passed：2026-07-29 人工操作「通過」；其餘選項未逐一儲存 |
@@ -124,7 +131,7 @@
 | Test ID | 測試目的 | 前置條件 | 操作步驟 | 預期結果 | 實際狀態 |
 |---|---|---|---|---|---|
 | TC-RWD-001 | 桌面主要畫面無 overflow | 1440×900 | 開啟三角色主要畫面 | 主要內容可讀，表格在容器內處理 overflow | Not Run |
-| TC-RWD-002 | 平板與手機基本可用 | 820×1180、390×844 | 逐頁檢查導覽、表單與 Modal | 無裁切主要操作；已知作答導覽／AI 面板在小螢幕隱藏 | Not Run |
+| TC-RWD-002 | 平板與手機基本可用 | 820×1180、390×844 | 逐頁檢查導覽、表單與 Modal | 無裁切主要操作，AI 面板在手機改為作答區下方 | Partial：2026-07-30 已驗證候選人作答頁 390×844 無水平溢位且 AI 面板可操作；其他角色與 820px 未執行 |
 | TC-A11Y-001 | 鍵盤操作 | 首頁及主要流程 | 只用 Tab、Shift+Tab、Enter、Space | 焦點順序合理且所有主操作可執行 | Not Run |
 | TC-A11Y-002 | 語意與 label | 主要表單與 Modal | 使用 axe／讀屏人工檢查 | 關鍵欄位有 label、heading 結構合理、錯誤可被理解 | Not Run |
 | TC-A11Y-003 | 色彩對比與焦點 | 所有主要頁面 | 執行自動掃描並人工確認 | 文字／狀態對比符合 WCAG AA 建議，焦點可見 | Not Run |

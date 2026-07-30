@@ -7,7 +7,7 @@
 - 面試建立後必須保存題目快照，避免原題修改影響歷史作答與評分。
 - AI 評分與人工評分分開保存，兩者不可互相覆寫。
 - 面試決策必須記錄決策者與決策時間；目前 MVP 尚未做到。
-- 提示紀錄必須包含面試題目、提示等級、使用時間與提示內容。
+- AI 對話訊息必須包含面試、題目、角色、request、時間、內容、provider 與處理狀態。
 - 狀態、分數、答案與決策的重要變更應建立不可任意覆寫的 AuditEvent。
 
 ## 2. 實體定義
@@ -122,15 +122,23 @@
 | lastSavedAt | datetime | 否 | 自動儲存時間 | Mock UI |
 | submittedAt | datetime | 否 | 提交時間 | Planned |
 
-### HintRecord
+### AIConversationMessage（取代 Sprint 4 的 HintRecord）
 
-用途：記錄候選人每次 AI 提示使用。
+用途：記錄候選人與 AI 在單一面試題目內的逐則對話。目前存在於前端記憶體，未寫入資料庫。
 
 | 欄位 | 型別 | 必填 | 關聯／說明 | 現況 |
 |---|---|---:|---|---|
 | id | UUID | 是 | Primary key | Planned |
 | interviewQuestionId | UUID | 是 | InterviewQuestion | MVP 只記 q number |
-| level | integer(1..4) | 是 | 提示等級 | React state |
+| interviewId | string | 是 | 所屬面試 | 前端 state |
+| questionId | integer | 是 | 所屬題目 | 前端 state |
+| role | candidate \| assistant | 是 | 訊息角色 | 前端 state |
+| requestId | string | 是 | 將問題與回覆／重試關聯 | 前端 state |
+| status | pending \| success \| error | 是 | 回覆處理狀態 | 前端 state |
+| provider | Mock | 是 | 明確標示目前 provider | 前端 state |
+| errorCode | string | 否 | Mock 失敗代碼 | 前端 state |
+
+正式資料庫需另補 server-side ID、建立者、不可竄改時間、模型／prompt 版本、token 用量、內容安全結果、稽核與資料保存期限。候選人訊息與 assistant 訊息分開保存；重試沿用同一 `requestId`，不複製候選人訊息。
 | requestedAt | datetime | 是 | 使用時間 | React state 僅 HH:mm |
 | content | text | 是 | 實際提示內容 | 固定 Mock 回覆 |
 | provider, modelVersion | string | 否 | AI 可追溯性 | Planned |

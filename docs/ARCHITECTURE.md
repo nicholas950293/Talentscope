@@ -54,7 +54,7 @@
 | `HrDashboard`、`CandidateList`、`HrSummary` | HR 進度、候選人與招募摘要 | Implemented UI／Mock data |
 | `LeadDashboard`、`QuestionBank`、`Builder`、`Invite` | 技術主管工作台、題庫、組卷與邀請 | Implemented UI／Mock service |
 | `CandidateFlow` | 驗證、說明、作答、提示、提交與完成 | Implemented UI／Mock verification and persistence |
-| `TechReview` | 答案、提示紀錄、AI 初評、人工評分與備註 | Implemented UI／Mock AI |
+| `TechReview` | 答案、Mock AI 對話紀錄、AI 初評、人工評分與備註 | Implemented UI／Mock data |
 | `Badge`、`Button`、`Toast` 等 | 檔案內共用 UI 元件 | Implemented |
 
 ## 4. Current MVP 模組關係圖
@@ -87,7 +87,7 @@ flowchart TD
 - `selected`：已選題目 ID 與組卷順序。
 - `status`：單一 Demo 面試狀態；目前沒有完整狀態機。
 - `candidates`、`result`：新增候選人與 HR 結果的工作階段資料。
-- `CandidateFlow` 內的 reducer state：答案、目前題目、剩餘秒數、提交鎖與提交來源；提示紀錄仍是局部 state。
+- `CandidateFlow` 內的面試 reducer：答案、目前題目、剩餘秒數、提交鎖與提交來源；AI 對話另由純 reducer 管理。
 - `scores`、`note`：技術主管人工評分與備註。
 
 重新整理頁面會重置全部 state。不同角色畫面雖共享部分 state，但沒有伺服器同步或多使用者一致性。
@@ -98,7 +98,8 @@ flowchart TD
 - `demoInterview` 與 `seedCandidates` 提供陳怡安等候選人情境。
 - 角色切換只修改前端 `role`，不是登入或授權。
 - 驗證只比對固定 Email `yian.chen@example.com` 與驗證碼 `482916`。
-- AI 提示由四段固定文字依等級回傳，並在記憶體記錄題號、時間、等級、內容。
+- `aiConversation.mjs` 以 `interviewId`、`questionId`、`requestId` 管理逐題訊息、pending、error、retry 與提交鎖。
+- `mockCandidateAIService.mjs` 提供可替換的非正式 Mock provider；不呼叫外部 AI API，也不產生完整答案。
 - AI 初評與證據由 `evals` 固定資料顯示；人工評分只更新當前元件 state。
 - Email、複製與自動儲存仍只呈現 UI 或 Toast；倒數與單次提交已由前端 reducer 實作，但不具持久化或後端冪等保證。
 
@@ -111,7 +112,11 @@ flowchart LR
     T1 --> T2["產生 Demo 邀請"]
     T2 --> C1["面試者輸入 Email 與驗證碼"]
     C1 --> C2["閱讀說明並作答"]
-    C2 --> C3["使用可選 AI 提示"]
+C2 --> C3["使用逐題 Mock AI 對話"]
+
+### Sprint 5 AI 模組邊界
+
+`CandidateFlow` 負責輸入與畫面協調，純 reducer 負責對話完整性，Mock service 負責延遲成功／可控失敗。候選人切題時只切換 selector，延遲回覆依原 request 所屬題目落位。資料仍只在記憶體；技術審核的固定 Mock 紀錄未與候選人 state 同步。
     C3 --> C4["提交面試"]
     C4 --> T3["技術主管檢視答案與 Mock AI 初評"]
     T3 --> T4["人工評分、備註與建議"]

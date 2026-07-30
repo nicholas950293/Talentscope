@@ -36,5 +36,29 @@ export type Interview = Candidate & {
 };
 
 export type Answer = { questionId: number; content: string };
-export type HintRecord = { q: number; level: number; text: string; time: string };
+export type AIConversationRole = "candidate" | "assistant";
+export type AIMessageStatus = "pending" | "success" | "error";
+export type AIConversationMessage = {
+  id: string;
+  interviewId: string;
+  questionId: number;
+  role: AIConversationRole;
+  content: string;
+  createdAt: string;
+  requestId: string;
+  status: AIMessageStatus;
+  provider: "Mock";
+  errorCode?: string;
+};
+export type AIConversationState = {
+  messages: AIConversationMessage[];
+  pendingByQuestion: Record<number, string>;
+  locked: boolean;
+};
+export type AIConversationAction =
+  | { type: "begin"; interviewId: string; questionId: number; content: string; requestId: string; createdAt: string }
+  | { type: "resolve"; requestId: string; content: string; createdAt: string }
+  | { type: "fail"; requestId: string; content?: string; errorCode?: string; createdAt: string }
+  | { type: "retry"; requestId: string; createdAt: string }
+  | { type: "lock" };
 export type RecruitmentDecision = { result: RecruitmentResult; decidedBy: "HR"; decidedAt?: string };
