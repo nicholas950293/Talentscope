@@ -47,7 +47,9 @@ export type AIConversationMessage = {
   createdAt: string;
   requestId: string;
   status: AIMessageStatus;
-  provider: "Mock";
+  provider: "pending" | "mock" | "gemini";
+  modelVersion?: string;
+  promptVersion?: string;
   errorCode?: string;
 };
 export type AIConversationState = {
@@ -57,7 +59,7 @@ export type AIConversationState = {
 };
 export type AIConversationAction =
   | { type: "begin"; interviewId: string; questionId: number; content: string; requestId: string; createdAt: string }
-  | { type: "resolve"; requestId: string; content: string; createdAt: string }
+  | { type: "resolve"; requestId: string; content: string; createdAt: string; provider: "mock" | "gemini"; modelVersion: string; promptVersion: string }
   | { type: "fail"; requestId: string; content?: string; errorCode?: string; createdAt: string }
   | { type: "retry"; requestId: string; createdAt: string }
   | { type: "lock" };

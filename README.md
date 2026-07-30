@@ -117,7 +117,16 @@ worker/                vinext Cloudflare Worker 入口
 
 - 作答頁支援每題獨立的自由文字 AI 對話、Enter 傳送與 Shift + Enter 換行。
 - 對話以 `interviewId`、`questionId`、`requestId` 關聯，具 pending、success、error 與重試狀態。
-- Mock AI 僅協助釐清題意與思路，不直接提供完整答案；提交後答案與對話均鎖定。
+- 候選人可自由使用內建 AI 協作；AI 回覆可能不完全正確，最終答案仍由候選人負責。提交後答案與對話均鎖定。
+
+### Candidate AI 設定
+
+前端只呼叫 `POST /api/candidate-ai`，Gemini key 僅由 server route 讀取。複製 `.env.example` 為 `.env.local` 後，可選擇：
+
+- `AI_PROVIDER=mock`：預設，不需要網路或金鑰。
+- `AI_PROVIDER=gemini`：需設定 `GEMINI_API_KEY` 與固定模型 `GEMINI_MODEL=gemini-2.5-flash`。
+
+Gemini 使用官方 `@google/genai` Interactions API、`store: false`、Prompt version `v1`，不使用 Gemini 伺服器端對話保存。單次訊息上限 2,000 字、近期歷史 8 則、總 prompt 8,000 字、輸出上限 800 tokens、timeout 15 秒。Free Tier 的 RPM、TPM、RPD 依 Google AI Studio 專案配額為準。
 - 所有資料只存在單一瀏覽器工作階段；技術審核頁的對話目前是隔離的 Mock 展示資料，並非跨角色同步。
 - 自動儲存、各題停留時間與分析進度；倒數雖有前端 reducer，仍沒有持久化或伺服器時間來源。
 - 人工評分、備註、技術建議與 HR 結果的資料持久化。

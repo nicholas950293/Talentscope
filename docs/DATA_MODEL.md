@@ -231,4 +231,8 @@ erDiagram
 - AuditEvent 的保存年限、匯出與刪除政策。
 - 招募決策是否允許改版；若允許，應保留版本而非覆寫。
 
+### Sprint 6A AIConversationMessage metadata
+
+`AIConversationMessage` 現包含 `provider`（`mock`／`gemini`）、`modelVersion`、`promptVersion`、`requestId`、`status` 與 `createdAt`。Candidate pending placeholder 暫用 `pending` provider，server resolve 後替換為實際 provider。不得保存 API key、system instruction、Gemini 原始 response 或隱藏推理。資料目前只在單一瀏覽器記憶體；未建立正式資料庫或 AuditEvent 寫入。
+
 正式落地前應先以 [SRS](./SRS.md) 的業務規則建立 schema migration 與 API 契約。

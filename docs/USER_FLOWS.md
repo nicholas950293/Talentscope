@@ -97,4 +97,10 @@ E --> F["選擇性使用逐題 Mock AI 對話"]
 - HR 新增候選人只影響當前 `DemoApp` state，不會出現在技術主管的固定指派卡片。
 - 正式版須由後端狀態機、資料庫與 AuditEvent 串起交接。
 
+### Sprint 6A AI 協作流程
+
+作答中輸入訊息 → 前端送往 `/api/candidate-ai` → server 驗證 interview、question、字數與同題有限歷史 → Mock 或 Gemini adapter 回覆 → 訊息依原 questionId 寫回。Pending 時不可重送；切題不改變歸屬；提交後忽略延遲回覆，但既有成功對話仍可閱讀。Gemini 缺設定、逾時、配額、暫時不可用與安全阻擋會顯示可理解錯誤，使用者可主動 Retry。
+
+傳送資料不含 Email、驗證碼、姓名、其他題目、招募結果、HR 備註或技術主管評語。工作階段資料重新整理後不保存。
+
 介面驗收與測試案例見 [TEST_PLAN](./TEST_PLAN.md)。
