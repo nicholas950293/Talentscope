@@ -1,146 +1,162 @@
-# Talentscope｜AI 技術面試協作平台 MVP
+# TalentScope｜AI 技術面試協作平台
 
-Talentscope 是一個串起 HR、技術主管與面試者的結構化面試協作原型。HR 管理候選人與招募結果，技術主管選題、組卷並人工審核，面試者完成驗證、作答與提交。AI 只協助提供分級提示與整理評估證據，最終決策保留給人類。
+TalentScope 是串連 HR、技術主管與候選人的結構化技術面試協作平台。HR 管理候選人與招募結果，技術主管選題、組卷並人工審核，候選人完成驗證、作答及提交。AI 僅協助釐清思路與整理評估證據；技術建議與招募結果必須由人類確認。
 
-> 目前版本是前端互動 Demo。資料、角色、Email、驗證碼、AI、自動儲存與倒數等多項能力為 Mock，不應視為可正式上線的後端功能。
+> 目前版本是可操作的前端 MVP。角色、資料、驗證、邀請、Email 與 AI 均包含 Mock 或瀏覽器記憶體行為，不具備正式上線所需的安全與持久化能力。
 
-## 核心功能
+## 目前版本
 
-- 三角色 Demo 入口與角色專屬導覽。
-- HR 招募 Dashboard、候選人列表、新增候選人、面試摘要與結果選擇。
-- 技術主管工作台、12 題 Demo 題庫、搜尋篩選、題目預覽、組卷排序與估時。
-- Demo 面試連結、6 位驗證碼及有效期限展示。
-- 面試者驗證、面試說明、三題作答、逐題 Mock AI 協作對話與提交確認。
-- 技術審核頁：答案、停留時間、AI 對話紀錄、六面向 AI 初評、人工分數與備註。
-- 九種一致面試狀態與基本響應式介面。
+目前 `main` 已包含 Sprint 7.5：
+
+- 三角色主要流程與一致的九種面試狀態。
+- 正式前端模組邊界；入口為 `TalentScopeApp`，不再使用 `DemoApp` 單體。
+- 候選人倒數、答案、單次提交與逐題 Mock AI 對話 reducer。
+- HR 複合篩選、候選人表單驗證與人類招募決策。
+- 技術主管題庫搜尋／篩選、組卷排序／估時及人工審核。
+- 全站文字可讀性與基本桌面／手機 RWD 改善。
+- 41 項 Node test runner 測試，包含純邏輯、reducer 與 SSR smoke test。
 
 ## 三種角色
 
-| 角色 | 主要操作 | 目前邊界 |
+| 角色 | 主要操作 | 現行邊界 |
 |---|---|---|
-| HR | 追蹤進度、新增候選人、閱讀摘要、選擇通過／不通過／待討論 | 只看招募摘要；資料只存在瀏覽器記憶體 |
-| 技術主管 | 題庫、組卷、邀請、查看答案／提示／AI 證據、人工審核 | AI 初評為固定 Demo；人工結果未持久化 |
-| 面試者 | 驗證、閱讀說明、作答、使用提示、提交 | 只接觸固定的陳怡安 Demo 面試 |
+| HR | 追蹤候選人、複合篩選、新增候選人、查看摘要、設定招募結果 | 資料只在當次瀏覽器工作階段；決策不保存決策者與時間 |
+| 技術主管 | 查看工作台、搜尋題庫、選題組卷、產生邀請、人工審核 | 題庫、邀請、答案與 AI 初評主要為 Mock；審核不持久化 |
+| 候選人 | Demo 驗證、閱讀說明、限時作答、使用 Mock AI、提交 | 只操作固定 Demo 面試；重新整理會遺失工作階段 |
 
-目前角色切換由 React state 控制，不是正式 Authentication 或 RBAC。
+角色選擇是展示入口，不是 Authentication 或 RBAC。
+
+## 核心 Demo 功能
+
+- HR Dashboard、候選人列表、關鍵字＋狀態＋職缺篩選及新增候選人表單。
+- 12 題 Demo 題庫、題目預覽、複合篩選、選題、排序、移除及估時。
+- 面試邀請連結、6 位數驗證碼、期限與寄送／複製回饋。
+- 候選人驗證、面試說明、75 分鐘前端倒數、三題作答與提交確認。
+- 每題獨立的 Mock AI 對話、pending、錯誤、重試及提交後鎖定。
+- 技術審核的固定 Mock AI 初評、獨立人工分數、備註及技術建議。
+- HR 人工選擇「通過／不通過／待討論」；AI 不會自動決定結果。
+
+### Current 與 Mock
+
+| 類別 | Current | Mock／限制 |
+|---|---|---|
+| 前端流程 | 三角色畫面、篩選、表單、組卷、作答、提交與審核介面 | 單一路由、單一瀏覽器工作階段 |
+| 面試控制 | 75 分鐘 reducer、切題保留答案、逾時／手動單次提交保護 | 無伺服器時間、autosave 或後端冪等 |
+| AI 協作 | 逐題對話狀態、錯誤、重試、安全字串護欄 | 固定 Mock provider；無正式模型或外部 API |
+| 資料與權限 | TypeScript 資料契約、角色畫面分流 | 無 API、資料庫、Authentication、RBAC 或 Interview Token |
+| 外部服務 | 無 | Email、Clipboard 成功與邀請寄送只顯示 Demo 回饋 |
+
+完整需求、狀態與待決議事項請見 [PRD](docs/PRD.md)。
 
 ## Demo 操作
 
-啟動後開啟終端顯示的 Local URL，通常為 [http://localhost:5173/](http://localhost:5173/)，再選擇：
+啟動後開啟終端顯示的 Local URL，通常是 [http://localhost:3000/](http://localhost:3000/)，再選擇 HR、技術主管或候選人 Demo。
 
-- **HR Demo**：查看招募總覽、新增候選人，並從陳怡安開啟面試摘要。
-- **技術主管 Demo**：進入題庫、選題組卷、產生 Demo 邀請或開啟審核中心。
-- **面試者 Demo**：輸入下列測試資料，完成說明、作答、提示與提交。
+候選人測試資料：
 
 ```text
 Email：yian.chen@example.com
 驗證碼：482916
 ```
 
-所有角色共用 Junior Data Analyst／陳怡安／王柏翰的核心 Demo 情境，但部分跨角色結果是固定展示資料，並非真實同步。
+三角色共用 Junior Data Analyst／陳怡安／王柏翰的故事背景，但答案、審核與摘要尚未形成正式跨角色同步。
 
 ## 技術棧
 
 - Next.js 16 App Router、React 19、TypeScript 5.9
-- Tailwind CSS 4、PostCSS 與手寫共用樣式
-- vinext、Vite 8、Cloudflare Worker 相容 build
-- Drizzle ORM／D1 骨架；目前 schema 為空且未啟用 D1 binding
-- Node.js test runner 的 domain/reducer 單元測試與 SSR smoke test
+- vinext 0.0.50、Vite 8、Cloudflare Worker 相容 build
+- Tailwind CSS 4、PostCSS 與 `app/globals.css` 共用樣式
+- Node.js test runner
+- Drizzle ORM／D1 骨架；schema 為空，產品尚未啟用資料庫
 
 ## 安裝與啟動
 
-需要 Node.js `>=22.13.0` 與 npm。
+需求：Node.js `>=22.13.0`，建議使用 Node.js 22 LTS。
 
-```bash
-npm install
+```powershell
+npm ci
 npm run dev
 ```
 
-本專案統一使用 `vinext dev`，不使用獨立的 Vite Preview 啟動方式。若需完全依 lockfile 安裝，可使用：
+專案統一使用 `vinext dev`，不要與 Vite Preview 混用。請以終端實際輸出的網址為準。
 
-```bash
-npm ci
-```
+其他指令：
 
-## 品質檢查
-
-```bash
-npm run lint
+```powershell
 npm run typecheck
+npm run lint
 npm test
 npm run build
+git diff --check
 ```
 
-`npm test` 會先執行 build，再驗證首頁 SSR、頁面標題、三角色入口與 starter metadata 已移除。
+`npm test` 會先 build，再執行 `tests/*.test.mjs`。
 
-## 專案目錄
+## 環境變數
+
+目前 Demo 不需要環境變數，也沒有正式 AI、Email、Auth 或資料庫連線設定。Repository 目前未提供 `.env.example`。
+
+- 不得將 API key、Token、密碼或候選人真實個資提交到 Git。
+- `db/index.ts` 的 Cloudflare `DB` binding 只屬未啟用的 D1 骨架；不得把它描述成 Current database。
+- 未經核准不得自行新增 Provider、Secret 或環境契約。
+
+## 主要目錄
 
 ```text
 app/
-  DemoApp.tsx          Demo 入口、共用 state 與角色流程協調
-  demo/                共用型別、Demo 資料、UI 與面試 reducer
-  flows/               HR、Tech Lead、Candidate 角色流程邊界
-  globals.css          設計 token、元件樣式與 RWD
-  page.tsx             首頁路由
-  layout.tsx           根 layout 與 metadata
-db/
-  index.ts             D1／Drizzle 連線 helper
-  schema.ts            目前為空
-docs/                  專案規格與協作文件
-tests/                 純邏輯／reducer 測試與 SSR smoke test
-worker/                vinext Cloudflare Worker 入口
+  TalentScopeApp.tsx    角色、共用工作階段 state 與 Flow 組合
+  shell/                角色入口與內部工作區外殼
+  flows/
+    hr/                 HR 畫面與純邏輯
+    tech/               技術主管畫面與題庫／組卷邏輯
+    candidate/          候選人驗證與鍵盤規則
+  domain/               共用型別、九種狀態與純業務規則
+  interview/            倒數、答案、提交與 AI 對話 reducer
+  mocks/                Seed data 與 Mock AI service
+  shared/               跨角色 UI 元件
+  globals.css           設計樣式、可讀性與 RWD
+db/                     未啟用的 Drizzle／D1 空白骨架
+docs/
+  PRD.md                唯一正式產品規格
+  archive/              歷史文件，不是現行標準
+tests/                  純邏輯、reducer 與 SSR smoke tests
+worker/                 vinext Cloudflare Worker 入口
 ```
-
-`examples/d1/` 是範本示例，不是目前 Talentscope 資料模型。
-
-## 文件索引
-
-建議依下列順序閱讀：
-
-1. [專案總覽](docs/PROJECT_OVERVIEW.md)－背景、定位、範圍與限制。
-2. [產品設計文件](docs/PDD.md)－角色、體驗、資訊架構與產品原則。
-3. [軟體需求規格書](docs/SRS.md)－編號需求、狀態、規則與驗收。
-4. [使用流程](docs/USER_FLOWS.md)－三角色 Happy Path、錯誤與 Mock 邊界。
-5. [系統架構](docs/ARCHITECTURE.md)－Current MVP 與 Proposed Architecture。
-6. [資料模型](docs/DATA_MODEL.md)－目前資料 shape 與 Proposed ER Model。
-7. [測試計畫](docs/TEST_PLAN.md)－測試案例與實際執行狀態。
-8. [工作說明書](docs/SOW.md)－交付範圍、里程碑、風險與變更管理。
-
-## Mock 功能
-
-- Demo 登入與角色權限。
-- 候選人、職缺、題目、答案、統計與面試狀態資料。
-- Email 邀請、專屬連結、驗證碼、複製與寄送回饋。
-- 候選人 Mock AI 對話與六面向 Mock AI 初評；未串接正式 AI API。
-
-## Sprint 5：Candidate AI 協作
-
-- 作答頁支援每題獨立的自由文字 AI 對話、Enter 傳送與 Shift + Enter 換行。
-- 對話以 `interviewId`、`questionId`、`requestId` 關聯，具 pending、success、error 與重試狀態。
-- Mock AI 僅協助釐清題意與思路，不直接提供完整答案；提交後答案與對話均鎖定。
-- 所有資料只存在單一瀏覽器工作階段；技術審核頁的對話目前是隔離的 Mock 展示資料，並非跨角色同步。
-- 自動儲存、各題停留時間與分析進度；倒數雖有前端 reducer，仍沒有持久化或伺服器時間來源。
-- 人工評分、備註、技術建議與 HR 結果的資料持久化。
-
-AI 不會、也不應自動決定錄取或淘汰。
 
 ## 已知限制
 
-- 單一路由；角色 flow、共用型別與候選人 reducer 已拆分，但技術主管部分展示 view 仍集中於 `DemoApp.tsx`。
-- 所有產品資料在記憶體中，重新整理即重置。
-- 無正式 API、資料庫、身分驗證、RBAC、Interview Token 或 Audit Log。
-- `chatgpt-auth.ts` helper 存在，但目前產品頁未使用。
-- 無正式 Email、AI、程式碼執行、自動判題、錄影或防作弊功能。
-- 自動化測試涵蓋核心 reducer、篩選／狀態純邏輯與首頁 SSR；React 元件、完整互動、RWD 與無障礙仍待補齊。
+- 所有產品資料位於前端記憶體，重新整理即重置。
+- 無正式 API、資料庫、Authentication、RBAC、Interview Token、Email、Audit Log 或外部 AI。
+- 技術審核顯示固定 Mock 答案／AI 紀錄，未與候選人工作階段同步。
+- HR 新增候選人不會同步成技術主管的新指派。
+- 內部畫面沒有獨立 URL；重新整理不能保留所在步驟。
+- 目前沒有 React 元件測試或瀏覽器 E2E；RWD、鍵盤、讀屏與對比仍需持續人工驗證。
+- 手機寬度會隱藏內部 sidebar，技術主管題庫等次頁導覽仍需產品決策。
+- npm audit 的既有相依套件風險應由獨立維護工作包評估。
 
 ## Roadmap
 
-建議下一階段依序處理：
+以下皆為 Proposed，未排定工期：
 
-1. 建立資料庫 schema、Backend API 與合法面試狀態機。
-2. 實作 Authentication／RBAC 與短效、可撤銷的 Interview Token。
-3. 完成 durable autosave、提交鎖定與跨角色審核同步。
-4. 串接 Email 與可稽核的 AI Service。
-5. 補齊 unit、integration、E2E、RWD、a11y、隱私與安全驗證。
+1. 核准正式資料契約、Backend API 與資料庫 schema。
+2. 建立 Authentication／RBAC 與短效、可撤銷的 Interview Token。
+3. 實作 durable autosave、後端提交鎖與跨角色同步。
+4. 由團隊決定 AI 協作範圍、Provider 策略與 AI 評估是否進入下一階段。
+5. 補齊 Email、Audit Log、E2E、a11y、隱私與安全驗證。
 
-Roadmap 是 Planned，不代表已排定工期或承諾日期。
+## 開發前必讀
+
+1. 所有人先閱讀本 README。
+2. 修改程式前必須閱讀 [AGENTS.md](AGENTS.md)。
+3. 開發功能前閱讀 [docs/PRD.md](docs/PRD.md) 的相關段落。
+4. Google Docs 是討論區；GitHub `main` 內文件才是正式施工標準。
+5. [docs/archive/](docs/archive/) 只供歷史查閱，不得作為新功能依據。
+6. 若程式、測試與 PRD 不一致，停止並回報，不得自行猜測。
+7. 每個工作包完成時，檢查 README 與 PRD 是否需要同步更新。
+
+## 文件索引
+
+- [README.md](README.md)：所有人必讀的專案入口。
+- [AGENTS.md](AGENTS.md)：人類與 AI 的施工、所有權與交付守則。
+- [docs/PRD.md](docs/PRD.md)：唯一正式產品需求與驗收基線。
+- [docs/archive/](docs/archive/)：已封存的歷史文件。
